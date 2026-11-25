@@ -5,13 +5,13 @@ import { requirePageRole } from "@/lib/session"
 import { emptyStaff } from "../schema"
 import { StaffForm } from "../staff-form"
 
-export const metadata: Metadata = { title: "เพิ่มพนักงาน HR" }
+export const metadata: Metadata = { title: "เพิ่มพนักงานบริษัท" }
 
 export default async function NewStaffPage() {
   await requirePageRole(["admin", "hr"])
   return (
     <>
-      <PageHeader icon={UsersRound} title="เพิ่มพนักงาน HR" description="จัดการข้อมูลพนักงานบริษัทและฝ่ายบุคคล" />
+      <PageHeader icon={UsersRound} title="เพิ่มพนักงานบริษัท" description="จัดการข้อมูลพนักงานบริษัทและฝ่ายบุคคล" />
       <StaffForm defaultValues={emptyStaff} />
     </>
   )

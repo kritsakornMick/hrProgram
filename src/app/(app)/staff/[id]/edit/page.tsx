@@ -6,7 +6,7 @@ import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
 import { StaffForm } from "../../staff-form"
 
-export const metadata: Metadata = { title: "แก้ไขพนักงาน HR" }
+export const metadata: Metadata = { title: "แก้ไขพนักงานบริษัท" }
 
 function formatDateInput(date: Date | null) {
   if (!date) return ""
@@ -21,7 +21,7 @@ export default async function EditStaffPage({ params }: PageProps<"/staff/[id]/e
 
   return (
     <>
-      <PageHeader icon={UsersRound} title="แก้ไขพนักงาน HR" description={staff.name} />
+      <PageHeader icon={UsersRound} title="แก้ไขพนักงานบริษัท" description={staff.name} />
       <StaffForm
         staffId={staff.id}
         defaultValues={{
