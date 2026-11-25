@@ -11,7 +11,7 @@ import { db } from "@/lib/db"
 import { requireUser } from "@/lib/session"
 import { DeleteStaffButton } from "./delete-staff-button"
 
-export const metadata: Metadata = { title: "พนักงาน HR" }
+export const metadata: Metadata = { title: "พนักงานบริษัท" }
 
 export default async function StaffPage({ searchParams }: PageProps<"/staff">) {
   const user = await requireUser()
@@ -37,13 +37,13 @@ export default async function StaffPage({ searchParams }: PageProps<"/staff">) {
     <>
       <PageHeader
         icon={UsersRound}
-        title="พนักงาน HR"
+        title="พนักงานบริษัท"
         description="จัดการข้อมูลพนักงานฝ่ายบุคคล ผู้ตรวจสอบเอกสาร และผู้สัมภาษณ์งาน"
         actions={
           canEdit && (
             <Link href="/staff/new" className={buttonVariants()}>
               <Plus />
-              เพิ่มพนักงาน HR
+              เพิ่มพนักงานบริษัท
             </Link>
           )
         }
@@ -71,7 +71,7 @@ export default async function StaffPage({ searchParams }: PageProps<"/staff">) {
               {staffList.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                    {query ? `ไม่พบพนักงานที่ตรงกับ “${query}”` : "ยังไม่มีข้อมูลพนักงาน HR"}
+                    {query ? `ไม่พบพนักงานที่ตรงกับ “${query}”` : "ยังไม่มีข้อมูลพนักงานบริษัท"}
                   </TableCell>
                 </TableRow>
               )}
