@@ -55,7 +55,7 @@ export const MENU: MenuGroup[] = [
     tone: "orange",
     items: [
       { title: "บริษัท/องค์กร", href: "/companies", icon: Building2, screen: "#1", owner: "Tech Lead", ready: true },
-      { title: "หน่วยงานลูกค้า", href: "/customers", icon: Landmark, screen: "#2", owner: "น้อง A", ready: false },
+      { title: "หน่วยงานลูกค้า", href: "/customers", icon: Landmark, screen: "#2", owner: "น้อง A", ready: true },
       { title: "พนักงาน HR", href: "/staff", icon: UsersRound, screen: "#3", owner: "น้อง A", ready: true },
     ],
   },
@@ -66,7 +66,7 @@ export const MENU: MenuGroup[] = [
     icon: ClipboardList,
     tone: "green",
     items: [
-      { title: "ใบสมัครงาน", href: "/applicants", icon: FileText, screen: "#4–#5", owner: "น้อง A", ready: false },
+      { title: "ใบสมัครงาน", href: "/applicants", icon: FileText, screen: "#4–#5", owner: "น้อง A", ready: true },
       { title: "ตรวจเอกสารสมัครงาน", href: "/document-checks", icon: FileCheck2, screen: "#6", owner: "น้อง A", ready: false },
       { title: "สัมภาษณ์งาน", href: "/interviews", icon: Handshake, screen: "#7", owner: "น้อง A", ready: false },
       { title: "มอบอำนาจและตรวจประวัติ", href: "/background-checks", icon: IdCard, screen: "#11", owner: "น้อง B", ready: false },
