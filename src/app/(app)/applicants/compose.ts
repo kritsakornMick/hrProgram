@@ -15,9 +15,22 @@ export function composeFullNameTh(title: string, first: string, last: string) {
   return `${title.trim()}${first.trim()} ${last.trim()}`.trim()
 }
 
+/** สระ/วรรณยุกต์ที่ขึ้นต้นคำไม่ได้ ถ้าตามหลังคำนำหน้า แปลว่าเป็นส่วนหนึ่งของชื่อ เช่น "นายิกา" ไม่ใช่ "นาย" + "ิกา" */
+const THAI_TRAILING_MARK = /^[ะ-ฺๅ็-๎]/
+
+/**
+ * แยกคำนำหน้าออกจากชื่อเต็ม
+ * ข้อจำกัด: ชื่อเก่าที่ไม่มีคำนำหน้าแต่ขึ้นต้นเหมือนคำนำหน้า (เช่น "นางนวล ใจดี") จะแยกเป็น "นาง" + "นวล"
+ * แต่รวมกลับได้ข้อความเดิมทุกตัวอักษร ข้อมูลในฐานข้อมูลจึงไม่เปลี่ยน ถ้าผู้ใช้ไม่ได้แก้ช่องคำนำหน้า
+ */
 export function splitFullNameTh(fullName: string | null) {
   let rest = (fullName ?? "").trim()
-  const title = TITLES_LONGEST_FIRST.find((t) => rest.startsWith(t.th))?.th ?? ""
+  const title =
+    TITLES_LONGEST_FIRST.find((t) => {
+      if (!rest.startsWith(t.th)) return false
+      const after = rest.slice(t.th.length)
+      return after.trim() !== "" && !THAI_TRAILING_MARK.test(after)
+    })?.th ?? ""
   rest = rest.slice(title.length).trim()
   const [first = "", ...lastParts] = rest.split(/\s+/)
   return { title, first, last: lastParts.join(" ") }

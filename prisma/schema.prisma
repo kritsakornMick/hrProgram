@@ -181,6 +181,8 @@ model Staff {
 /// ใบสมัครงาน (tbl-ใบสมัครงาน)
 model Applicant {
   id                       Int       @id @default(autoincrement())
+  /// บันทึกร่าง (ยังกรอกช่องบังคับไม่ครบ) กด "บันทึกใบสมัคร" แล้วเป็น false
+  isDraft                  Boolean   @default(false)
   /// วันที่สมัคร
   appliedAt                DateTime  @default(now()) @db.Date
   /// ตำแหน่งงาน
@@ -193,8 +195,8 @@ model Applicant {
   fullNameTh               String
   /// คำนำหน้า-ชื่อ-สกุล (eng)
   fullNameEn               String?
-  /// เลขบัตรประชาชน 13 หลัก
-  nationalId               String?
+  /// เลขบัตรประชาชน 13 หลัก (ห้ามซ้ำ, ว่างได้หลายใบ)
+  nationalId               String?   @unique
   /// วันที่ออกบัตร
   idCardIssuedAt           DateTime? @db.Date
   /// วันที่บัตรหมดอายุ
@@ -339,7 +341,6 @@ model Applicant {
   documentChecks DocumentCheck[]
 
   @@index([fullNameTh])
-  @@index([nationalId])
   @@map("applicant")
 }
 

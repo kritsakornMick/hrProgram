@@ -52,19 +52,16 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
         </div>
         <CardContent className="pt-6">
           <FieldGroup className="grid gap-5 md:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="company-id-display">ID Company</FieldLabel>
-              <Input
-                id="company-id-display"
-                value={companyId ? `COMP${String(companyId).padStart(3, "0")}` : "สร้างอัตโนมัติเมื่อบันทึก"}
-                disabled
-                readOnly
-                className="bg-muted text-muted-foreground"
-              />
-            </Field>
             <TextField form={form} name="code" label="รหัสบริษัท" required />
-            <TextField form={form} name="nameTh" label="ชื่อบริษัท TH" required />
-            <TextField form={form} name="nameEn" label="ชื่อบริษัท ENG" />
+            <TextField
+              form={form}
+              name="taxId"
+              label="เลขประจำตัวผู้เสียภาษี"
+              description="ตัวเลข 13 หลัก"
+              inputMode="numeric"
+            />
+            <TextField form={form} name="nameTh" label="ชื่อบริษัท (ภาษาไทย)" required />
+            <TextField form={form} name="nameEn" label="ชื่อบริษัท (ภาษาอังกฤษ)" />
           </FieldGroup>
           {/* TODO (Tech Lead, ขั้น 2): อัปโหลดรูปหัว/ท้ายกระดาษ หลังทำ module เก็บไฟล์ */}
         </CardContent>
@@ -78,14 +75,6 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
         </div>
         <CardContent className="pt-6">
           <FieldGroup className="grid gap-5 md:grid-cols-2">
-            <TextField
-              form={form}
-              name="taxId"
-              label="เลขประจำตัวผู้เสียภาษี"
-              description="ตัวเลข 13 หลัก"
-              inputMode="numeric"
-            />
-            <TextField form={form} name="phone" label="โทรศัพท์" inputMode="tel" />
             <Controller
               control={form.control}
               name="address"
@@ -97,26 +86,23 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
                 </Field>
               )}
             />
+            <TextField form={form} name="phone" label="โทรศัพท์" inputMode="tel" />
             <TextField form={form} name="fax" label="โทรสาร" inputMode="tel" />
             <TextField form={form} name="email" label="อีเมล" type="email" />
           </FieldGroup>
         </CardContent>
       </Card>
-{/* แถบปุ่มดำเนินการด้านล่าง */}
-      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-        <Button type="submit" disabled={pending} className="min-w-32 gap-2">
-          <Save className="size-4" />
-          {pending ? "กำลังบันทึก..." : "บันทึก"}
-        </Button>
-        <Link
-          href="/companies"
-          className={buttonVariants({
-            className: "min-w-32 gap-2 !bg-destructive text-primary-foreground hover:!bg-destructive/90",
-          })}
-        >
-          <X className="size-4" />
+
+      {/* ปุ่มท้ายฟอร์ม: ยกเลิกซ้าย บันทึกขวา เหมือนฟอร์มอื่นในระบบ */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+        <Link href="/companies" className={buttonVariants({ variant: "outline", className: "min-w-28" })}>
+          <X />
           ยกเลิก
         </Link>
+        <Button type="submit" disabled={pending} className="min-w-28">
+          <Save />
+          {pending ? "กำลังบันทึก..." : "บันทึก"}
+        </Button>
       </div>
     </form>
   )
