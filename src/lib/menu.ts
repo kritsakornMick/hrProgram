@@ -54,9 +54,9 @@ export const MENU: MenuGroup[] = [
     icon: Database,
     tone: "orange",
     items: [
-      { title: "บริษัท/องค์กร", href: "/companies", icon: Building2, screen: "#1", owner: "Tech Lead", ready: false },
+      { title: "บริษัท/องค์กร", href: "/companies", icon: Building2, screen: "#1", owner: "Tech Lead", ready: true },
       { title: "หน่วยงานลูกค้า", href: "/customers", icon: Landmark, screen: "#2", owner: "น้อง A", ready: true },
-      { title: "พนักงาน HR", href: "/staff", icon: UsersRound, screen: "#3", owner: "น้อง A", ready: false },
+      { title: "พนักงาน HR", href: "/staff", icon: UsersRound, screen: "#3", owner: "น้อง A", ready: true },
     ],
   },
   {
