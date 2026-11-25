@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-tint-green via-background to-tint-orange p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="items-center text-center">
-          <BrandLogo className="text-4xl" />
+          <BrandLogo className="mx-auto h-16" />
           <CardTitle className="mt-2 text-lg">{SITE.systemName}</CardTitle>
           <CardDescription>{SITE.companyName}</CardDescription>
         </CardHeader>

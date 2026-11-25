@@ -24,10 +24,15 @@ export function UserMenu({ name, roleLabel }: { name: string; roleLabel: string 
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium hover:bg-muted">
-        <UserRound className="size-7 rounded-full bg-primary p-1 text-primary-foreground" />
-        <span className="hidden sm:inline">{name}</span>
-        <ChevronDown className="size-4" />
+      <DropdownMenuTrigger className="flex shrink-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left hover:bg-muted">
+        <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-tint-green sm:size-11">
+          <UserRound className="size-5 sm:size-6" />
+        </span>
+        <span className="hidden leading-tight sm:block">
+          <span className="block max-w-36 truncate font-heading font-medium">{name}</span>
+          <span className="block text-xs text-muted-foreground">{roleLabel}</span>
+        </span>
+        <ChevronDown className="size-4 text-muted-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuGroup>
