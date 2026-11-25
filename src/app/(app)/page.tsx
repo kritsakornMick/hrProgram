@@ -22,19 +22,21 @@ export default async function DashboardPage() {
   const groups = MENU.filter((g) => g.key !== "settings")
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_300px]">
+    <div className="grid gap-6 xl:grid-cols-[1fr_290px]">
       <div className="min-w-0 space-y-6">
         <div className="flex items-center gap-4">
-          <UsersRound className="size-14 shrink-0 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold text-brand-green-dark">ระบบบริหารงานบุคคล (HR)</h1>
-            <p className="text-muted-foreground">
+          <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-tint-green text-primary sm:size-16">
+            <UsersRound className="size-8 sm:size-10" strokeWidth={2.25} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="font-heading text-xl font-semibold text-brand-green-dark sm:text-3xl">ระบบบริหารงานบุคคล (HR)</h1>
+            <p className="font-heading text-foreground/80">
               สวัสดีคุณ{user.name} ยินดีต้อนรับสู่{SITE.systemName} {SITE.companyName}
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           <StatCard icon={UserPlus} label="ผู้สมัครใหม่ (เดือนนี้)" value={stats.newApplicants} unit="คน" tone="green" />
           <StatCard icon={FileClock} label="เอกสารรอตรวจ" value={stats.pendingDocumentChecks} unit="รายการ" tone="orange" />
           <StatCard icon={CalendarClock} label="นัดสัมภาษณ์วันนี้" value={stats.interviewsToday} unit="คน" tone="blue" />
@@ -42,7 +44,7 @@ export default async function DashboardPage() {
           <StatCard icon={FileClock} label="สัญญาลูกค้าใกล้หมด" value={stats.contractsEndingSoon} unit="สัญญา" tone="pink" />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,12.5rem),1fr))] gap-4">
           {groups.map((g) => (
             <MenuGroupCard key={g.key} group={g} />
           ))}

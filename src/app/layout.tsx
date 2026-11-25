@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { IBM_Plex_Sans_Thai } from "next/font/google"
+import { IBM_Plex_Sans_Thai, Kanit } from "next/font/google"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { SITE } from "@/lib/site"
@@ -11,6 +11,13 @@ const fontSans = IBM_Plex_Sans_Thai({
   weight: ["400", "500", "600", "700"],
 })
 
+/** ฟอนต์หัวข้อ (class font-heading) ตามภาพดีไซน์ */
+const fontHeading = Kanit({
+  variable: "--font-kanit",
+  subsets: ["thai", "latin"],
+  weight: ["400", "500", "600"],
+})
+
 export const metadata: Metadata = {
   title: { default: SITE.systemName, template: `%s | ${SITE.systemName}` },
   description: `${SITE.systemNameEn} — ${SITE.companyName}`,
@@ -18,7 +25,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="th" className={`${fontSans.variable} h-full antialiased`}>
+    <html lang="th" className={`${fontSans.variable} ${fontHeading.variable} h-full antialiased`}>
       <body className="min-h-full">
         <TooltipProvider>{children}</TooltipProvider>
         <Toaster richColors position="top-right" />
