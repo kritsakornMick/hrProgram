@@ -1,13 +1,14 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Building2, Phone, Save, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,7 +21,7 @@ type Props = {
   defaultValues: CompanyInput
 }
 
-/** ฟอร์มเดียวใช้ทั้งเพิ่มและแก้ไข */
+/** ฟอร์มเดียวใช้ทั้งเพิ่มและแก้ไข (แบ่ง 2 การ์ด: ข้อมูลบริษัทหลัก + ที่อยู่และการติดต่อ) */
 export function CompanyForm({ companyId, defaultValues }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -42,14 +43,49 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
   }
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
-      <Card>
-        <CardContent>
+    <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-6">
+      {/* การ์ดที่ 1: ข้อมูลบริษัทหลัก */}
+      <Card className="overflow-hidden pt-0">
+        <div className="flex items-center gap-2.5 bg-primary px-6 py-3.5 text-primary-foreground">
+          <Building2 className="size-5 shrink-0" />
+          <h2 className="font-semibold">ข้อมูลบริษัทหลัก</h2>
+        </div>
+        <CardContent className="pt-6">
           <FieldGroup className="grid gap-5 md:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="company-id-display">ID Company</FieldLabel>
+              <Input
+                id="company-id-display"
+                value={companyId ? `COMP${String(companyId).padStart(3, "0")}` : "สร้างอัตโนมัติเมื่อบันทึก"}
+                disabled
+                readOnly
+                className="bg-muted text-muted-foreground"
+              />
+            </Field>
             <TextField form={form} name="code" label="รหัสบริษัท" required />
-            <TextField form={form} name="taxId" label="เลขประจำตัวผู้เสียภาษี" description="ตัวเลข 13 หลัก" inputMode="numeric" />
-            <TextField form={form} name="nameTh" label="ชื่อบริษัท (ภาษาไทย)" required />
-            <TextField form={form} name="nameEn" label="ชื่อบริษัท (ภาษาอังกฤษ)" />
+            <TextField form={form} name="nameTh" label="ชื่อบริษัท TH" required />
+            <TextField form={form} name="nameEn" label="ชื่อบริษัท ENG" />
+          </FieldGroup>
+          {/* TODO (Tech Lead, ขั้น 2): อัปโหลดรูปหัว/ท้ายกระดาษ หลังทำ module เก็บไฟล์ */}
+        </CardContent>
+      </Card>
+
+      {/* การ์ดที่ 2: ที่อยู่และการติดต่อ */}
+      <Card className="overflow-hidden pt-0">
+        <div className="flex items-center gap-2.5 bg-primary px-6 py-3.5 text-primary-foreground">
+          <Phone className="size-5 shrink-0" />
+          <h2 className="font-semibold">ที่อยู่และการติดต่อ</h2>
+        </div>
+        <CardContent className="pt-6">
+          <FieldGroup className="grid gap-5 md:grid-cols-2">
+            <TextField
+              form={form}
+              name="taxId"
+              label="เลขประจำตัวผู้เสียภาษี"
+              description="ตัวเลข 13 หลัก"
+              inputMode="numeric"
+            />
+            <TextField form={form} name="phone" label="โทรศัพท์" inputMode="tel" />
             <Controller
               control={form.control}
               name="address"
@@ -61,21 +97,27 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
                 </Field>
               )}
             />
-            <TextField form={form} name="phone" label="โทรศัพท์" inputMode="tel" />
             <TextField form={form} name="fax" label="โทรสาร" inputMode="tel" />
             <TextField form={form} name="email" label="อีเมล" type="email" />
           </FieldGroup>
-          {/* TODO (Tech Lead, ขั้น 2): อัปโหลดรูปหัว/ท้ายกระดาษ หลังทำ module เก็บไฟล์ */}
         </CardContent>
-        <CardFooter className="justify-end gap-2">
-          <Link href="/companies" className={buttonVariants({ variant: "outline" })}>
-            ยกเลิก
-          </Link>
-          <Button type="submit" disabled={pending}>
-            {pending ? "กำลังบันทึก..." : "บันทึก"}
-          </Button>
-        </CardFooter>
       </Card>
+{/* แถบปุ่มดำเนินการด้านล่าง */}
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <Button type="submit" disabled={pending} className="min-w-32 gap-2">
+          <Save className="size-4" />
+          {pending ? "กำลังบันทึก..." : "บันทึก"}
+        </Button>
+        <Link
+          href="/companies"
+          className={buttonVariants({
+            className: "min-w-32 gap-2 !bg-destructive text-primary-foreground hover:!bg-destructive/90",
+          })}
+        >
+          <X className="size-4" />
+          ยกเลิก
+        </Link>
+      </div>
     </form>
   )
 }
