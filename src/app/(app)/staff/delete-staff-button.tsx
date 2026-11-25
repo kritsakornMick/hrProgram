@@ -37,7 +37,7 @@ export function DeleteStaffButton({ id, name }: { id: number; name: string }) {
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>ลบข้อมูลพนักงาน HR</AlertDialogTitle>
+          <AlertDialogTitle>ลบข้อมูลพนักงานบริษัท</AlertDialogTitle>
           <AlertDialogDescription>ต้องการลบ “{name}” ใช่ไหม ลบแล้วกู้คืนไม่ได้</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

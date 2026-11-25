@@ -41,7 +41,7 @@ export async function createStaff(input: StaffInput): Promise<ActionResult<{ id:
 
   await audit(user, "create", "staff", staff.id)
   revalidatePath("/staff")
-  return { ok: true, data: { id: staff.id }, message: "เพิ่มพนักงาน HR เรียบร้อย" }
+  return { ok: true, data: { id: staff.id }, message: "เพิ่มพนักงานบริษัทเรียบร้อย" }
 }
 
 export async function updateStaff(id: number, input: StaffInput): Promise<ActionResult> {

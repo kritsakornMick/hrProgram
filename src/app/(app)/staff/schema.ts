@@ -33,7 +33,7 @@ export const BANK_NAMES = [
 export const BANK_ACCOUNT_TYPES = ["ออมทรัพย์", "กระแสรายวัน"] as const
 
 /**
- * กติกาตรวจข้อมูลพนักงาน HR — ใช้ทั้งในฟอร์ม (ฝั่ง browser) และ Server Action (ฝั่ง server)
+ * กติกาตรวจข้อมูลพนักงานบริษัท — ใช้ทั้งในฟอร์ม (ฝั่ง browser) และ Server Action (ฝั่ง server)
  */
 export const staffSchema = z.object({
   code: optionalText(20),
