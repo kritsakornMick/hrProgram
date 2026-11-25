@@ -110,6 +110,10 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgb(255 255 255 / 0.15);
   --sidebar-ring: #f26b1d;
+
+  /* กระดาษเอกสารที่พิมพ์ (ขาว ตัวอักษรดำ) */
+  --paper: #ffffff;
+  --paper-foreground: #000000;
 }
 
 
@@ -123,4 +127,49 @@
   html {
     @apply font-sans;
   }
+}
+
+/*
+ * กระดาษ A4 สำหรับตัวอย่างหนังสือและหน้าพิมพ์ (ใช้กับ src/components/document/a4-sheet.tsx)
+ * ทุกขนาดในกระดาษคิดเป็น "มม." ผ่านตัวแปร --mm
+ * - บนจอ: --mm = ความกว้างกล่อง / 210 กระดาษจึงย่อ/ขยายตามที่ว่าง หน้าตาเหมือนเดิมทุกขนาดจอ
+ * - data-size="actual" และตอนพิมพ์: --mm = 1mm (ขนาดจริง)
+ * ข้างในกระดาษให้ใช้หน่วย em (ตามขนาดตัวอักษร) เพื่อให้ย่อ/ขยายไปด้วยกัน
+ */
+@layer components {
+  .a4-frame {
+    container-type: inline-size;
+  }
+  .a4-sheet {
+    --mm: calc(100cqw / 210);
+    page: a4;
+    width: 100%;
+    min-height: calc(var(--mm) * 297);
+    padding: calc(var(--mm) * 18) calc(var(--mm) * 20);
+    background: var(--paper);
+    color: var(--paper-foreground);
+    font-size: calc(var(--mm) * 4.1);
+    line-height: 1.8;
+  }
+  .a4-sheet[data-size="actual"] {
+    --mm: 1mm;
+    width: 210mm;
+  }
+  @media print {
+    .a4-sheet {
+      --mm: 1mm;
+      width: 210mm;
+      min-height: 297mm;
+      box-shadow: none;
+      break-after: page;
+    }
+    .a4-sheet:last-child {
+      break-after: auto;
+    }
+  }
+}
+
+@page a4 {
+  size: A4;
+  margin: 0;
 }
