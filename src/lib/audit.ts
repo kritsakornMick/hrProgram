@@ -27,3 +27,23 @@ export async function audit(
     },
   })
 }
+
+const VIEW_DEDUPE_MS = 60_000
+
+/**
+ * บันทึกการเปิดดูข้อมูลส่วนบุคคล (ใช้ในหน้าที่แสดงข้อมูลเต็ม เช่น หน้าแก้ไขใบสมัคร)
+ * ถ้าคนเดิมเปิดรายการเดิมซ้ำภายใน 1 นาที (เช่น หน้าโหลดใหม่หลังกดบันทึก) นับเป็นครั้งเดียว
+ */
+export async function auditView(user: CurrentUser, entity: string, entityId: string | number) {
+  const recent = await db.auditLog.findFirst({
+    where: {
+      userId: user.id,
+      action: "view",
+      entity,
+      entityId: String(entityId),
+      createdAt: { gte: new Date(Date.now() - VIEW_DEDUPE_MS) },
+    },
+    select: { id: true },
+  })
+  if (!recent) await audit(user, "view", entity, entityId)
+}

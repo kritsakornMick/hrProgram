@@ -96,11 +96,13 @@ const parseNationalId = (typed: string) => typed.replace(/\D/g, "").slice(0, 13)
 type Props = {
   /** มี applicantId = แก้ไข, ไม่มี = เพิ่มใหม่ */
   applicantId?: number
+  /** แสดงปุ่ม "บันทึกร่าง" ไหม (ใบใหม่และใบที่ยังเป็นร่าง = ได้, ใบที่บันทึกใบสมัครแล้ว = ไม่ได้) */
+  canSaveDraft?: boolean
   defaultValues: ApplicantInput
 }
 
 /** ฟอร์มใบสมัครงาน ใช้ทั้งเพิ่มและแก้ไข */
-export function ApplicantForm({ applicantId, defaultValues }: Props) {
+export function ApplicantForm({ applicantId, canSaveDraft = true, defaultValues }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   // ปุ่มไหนถูกกด: บันทึกร่าง = ตรวจหลวม, บันทึกใบสมัคร = ตรวจครบ
@@ -566,17 +568,19 @@ export function ApplicantForm({ applicantId, defaultValues }: Props) {
               ยกเลิก
             </Link>
             <ResetButton onConfirm={() => form.reset()} disabled={pending} />
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              disabled={pending}
-              onClick={() => save("draft")}
-              className="h-10 border-primary px-4 text-primary hover:bg-secondary hover:text-primary"
-            >
-              <Save />
-              บันทึกร่าง
-            </Button>
+            {canSaveDraft && (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={pending}
+                onClick={() => save("draft")}
+                className="h-10 border-primary px-4 text-primary hover:bg-secondary hover:text-primary"
+              >
+                <Save />
+                บันทึกร่าง
+              </Button>
+            )}
             <Button type="submit" size="lg" disabled={pending} className="h-10 px-4">
               <Save />
               {pending ? "กำลังบันทึก..." : "บันทึกใบสมัคร"}

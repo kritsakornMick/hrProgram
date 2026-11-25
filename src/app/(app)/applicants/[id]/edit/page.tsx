@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { audit } from "@/lib/audit"
+import { auditView } from "@/lib/audit"
 import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
 import { ApplicantForm } from "../../applicant-form"
@@ -20,17 +20,22 @@ export default async function EditApplicantPage({ params }: PageProps<"/applican
   if (!applicant) notFound()
 
   // เปิดดูข้อมูลส่วนบุคคล (เลขบัตร ประวัติคดี) ต้องบันทึกประวัติการเข้าถึง (PDPA)
-  await audit(user, "view", "applicant", applicant.id)
+  await auditView(user, "applicant", applicant.id)
 
   return (
     <>
       <ApplicantFormHeader
         crumb={`แก้ไขเลขที่ ${applicant.id}`}
         title={`ใบสมัครงาน เลขที่ ${applicant.id}`}
-        description={applicant.fullNameTh}
+        description={applicant.isDraft ? `${applicant.fullNameTh} (ร่าง)` : applicant.fullNameTh}
       />
       {/* key: บันทึกร่างใบใหม่แล้วย้ายมาหน้านี้ ให้ฟอร์มเริ่มใหม่ด้วยค่าจากฐานข้อมูล */}
-      <ApplicantForm key={applicant.id} applicantId={applicant.id} defaultValues={toApplicantInput(applicant)} />
+      <ApplicantForm
+        key={applicant.id}
+        applicantId={applicant.id}
+        canSaveDraft={applicant.isDraft}
+        defaultValues={toApplicantInput(applicant)}
+      />
     </>
   )
 }

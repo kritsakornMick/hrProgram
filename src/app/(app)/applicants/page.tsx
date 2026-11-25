@@ -24,6 +24,7 @@ export const metadata: Metadata = { title: "ใบสมัครงาน" }
 const PAGE_SIZE = 20
 
 const STATUS_STYLES: Record<ApplicantStatusTone, string> = {
+  draft: "border border-dashed border-muted-foreground/40 bg-card text-muted-foreground",
   pending: "bg-muted text-muted-foreground",
   warning: "bg-tint-orange text-brand-orange-dark",
   info: "bg-tint-blue text-foreground",
@@ -74,6 +75,7 @@ export default async function ApplicantsPage({ searchParams }: PageProps<"/appli
       nationalId: true,
       position: true,
       mobilePhone: true,
+      isDraft: true,
       ...applicantStatusInclude,
     },
   })

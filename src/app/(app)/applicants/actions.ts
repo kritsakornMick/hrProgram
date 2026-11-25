@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { Prisma } from "@/generated/prisma/client"
 import type { ActionResult } from "@/lib/action-result"
 import { audit } from "@/lib/audit"
 import { db } from "@/lib/db"
@@ -14,26 +15,39 @@ import { SAVE_MODES, schemaFor, type ApplicantInput, type SaveMode } from "./sch
  * Server Actions ของใบสมัครงาน ทำครบ 6 ขั้นตาม AGENTS.md:
  * 1. requireRole  2. safeParse  3. db.*  4. audit  5. revalidatePath  6. คืน ActionResult
  *
- * mode = "draft"  (บันทึกร่าง)     ตรวจแค่รูปแบบ + ต้องมีชื่อ
- * mode = "submit" (บันทึกใบสมัคร) ตรวจช่องบังคับครบ
+ * mode = "draft"  (บันทึกร่าง)     ตรวจแค่รูปแบบ + ต้องมีชื่อ  → isDraft = true
+ * mode = "submit" (บันทึกใบสมัคร) ตรวจช่องบังคับครบ          → isDraft = false
+ * ใบที่ "บันทึกใบสมัคร" แล้ว กลับไปเป็นร่างไม่ได้ (กันช่องบังคับถูกลบทิ้ง)
  */
 
 const modeSchema = z.enum(SAVE_MODES)
 
-function parseInput(input: ApplicantInput, mode: SaveMode) {
-  const parsedMode = modeSchema.safeParse(mode)
-  // mode แปลกๆ จาก browser ให้ตรวจแบบเข้มที่สุด
-  return schemaFor(parsedMode.success ? parsedMode.data : "submit").safeParse(input)
+/** mode แปลกๆ จาก browser ให้ตรวจแบบเข้มที่สุด */
+function parseMode(mode: unknown): SaveMode {
+  const parsed = modeSchema.safeParse(mode)
+  return parsed.success ? parsed.data : "submit"
 }
 
-/** เลขบัตรห้ามซ้ำกับผู้สมัครคนอื่น (คืนข้อความ error หรือ null) */
+function duplicateNationalIdError(otherId?: number): ActionResult<never> {
+  const message = otherId
+    ? `เลขบัตรประชาชนนี้มีอยู่แล้วในใบสมัครเลขที่ ${otherId}`
+    : "เลขบัตรประชาชนนี้มีอยู่แล้วในใบสมัครอื่น"
+  return { ok: false, error: message, fieldErrors: { nationalId: [message] } }
+}
+
+/** เลขบัตรซ้ำกับผู้สมัครคนอื่นไหม (คืนเลขที่ใบสมัครที่ซ้ำ) — ฐานข้อมูลมี @unique กันอีกชั้น */
 async function findDuplicateNationalId(nationalId: string, excludeId?: number) {
-  if (!nationalId) return null
+  if (!nationalId) return undefined
   const other = await db.applicant.findFirst({
     where: { nationalId, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
     select: { id: true },
   })
-  return other ? `เลขบัตรประชาชนนี้มีอยู่แล้วในใบสมัครเลขที่ ${other.id}` : null
+  return other?.id
+}
+
+/** บันทึกพร้อมกันสองคนด้วยเลขบัตรเดียวกัน: ตัวที่สองจะชน @unique ในฐานข้อมูล */
+function isUniqueViolation(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
 export async function createApplicant(
@@ -41,59 +55,85 @@ export async function createApplicant(
   mode: SaveMode = "submit",
 ): Promise<ActionResult<{ id: number }>> {
   const user = await requireRole(APPLICANT_EDITORS)
-  const parsed = parseInput(input, mode)
+  const saveMode = parseMode(mode)
+  const parsed = schemaFor(saveMode).safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: "กรุณาตรวจสอบข้อมูล", fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const duplicate = await findDuplicateNationalId(parsed.data.nationalId)
-  if (duplicate) return { ok: false, error: duplicate, fieldErrors: { nationalId: [duplicate] } }
+  const duplicateId = await findDuplicateNationalId(parsed.data.nationalId)
+  if (duplicateId) return duplicateNationalIdError(duplicateId)
 
-  const applicant = await db.applicant.create({ data: toApplicantData(parsed.data) })
-  await audit(user, "create", "applicant", applicant.id, { mode })
+  let applicant: { id: number }
+  try {
+    applicant = await db.applicant.create({
+      data: { ...toApplicantData(parsed.data), isDraft: saveMode === "draft" },
+      select: { id: true },
+    })
+  } catch (error) {
+    if (isUniqueViolation(error)) return duplicateNationalIdError()
+    throw error
+  }
+
+  await audit(user, "create", "applicant", applicant.id, { mode: saveMode })
   revalidatePath("/applicants")
   return {
     ok: true,
     data: { id: applicant.id },
-    message: mode === "draft" ? `บันทึกร่างแล้ว (เลขที่ ${applicant.id})` : `บันทึกใบสมัครเลขที่ ${applicant.id} เรียบร้อย`,
+    message:
+      saveMode === "draft" ? `บันทึกร่างแล้ว (เลขที่ ${applicant.id})` : `บันทึกใบสมัครเลขที่ ${applicant.id} เรียบร้อย`,
   }
 }
 
 export async function updateApplicant(id: number, input: ApplicantInput, mode: SaveMode = "submit"): Promise<ActionResult> {
   const user = await requireRole(APPLICANT_EDITORS)
-  const parsed = parseInput(input, mode)
+
+  const existing = await db.applicant.findUnique({ where: { id }, select: { isDraft: true } })
+  if (!existing) return { ok: false, error: "ไม่พบใบสมัครนี้ อาจถูกลบไปแล้ว" }
+
+  // ใบที่บันทึกใบสมัครแล้ว ต้องตรวจครบทุกครั้ง (บันทึกเป็นร่างไม่ได้)
+  const saveMode = existing.isDraft ? parseMode(mode) : "submit"
+  const parsed = schemaFor(saveMode).safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: "กรุณาตรวจสอบข้อมูล", fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const exists = await db.applicant.findUnique({ where: { id }, select: { id: true } })
-  if (!exists) return { ok: false, error: "ไม่พบใบสมัครนี้ อาจถูกลบไปแล้ว" }
+  const duplicateId = await findDuplicateNationalId(parsed.data.nationalId, id)
+  if (duplicateId) return duplicateNationalIdError(duplicateId)
 
-  const duplicate = await findDuplicateNationalId(parsed.data.nationalId, id)
-  if (duplicate) return { ok: false, error: duplicate, fieldErrors: { nationalId: [duplicate] } }
+  try {
+    await db.applicant.update({
+      where: { id },
+      data: { ...toApplicantData(parsed.data), isDraft: saveMode === "draft" },
+    })
+  } catch (error) {
+    if (isUniqueViolation(error)) return duplicateNationalIdError()
+    throw error
+  }
 
-  await db.applicant.update({ where: { id }, data: toApplicantData(parsed.data) })
-  await audit(user, "update", "applicant", id, { mode })
+  await audit(user, "update", "applicant", id, { mode: saveMode })
   revalidatePath("/applicants")
-  revalidatePath(`/applicants/${id}/edit`)
-  return { ok: true, message: mode === "draft" ? "บันทึกร่างแล้ว" : "บันทึกการแก้ไขเรียบร้อย" }
+  return { ok: true, message: saveMode === "draft" ? "บันทึกร่างแล้ว" : "บันทึกการแก้ไขเรียบร้อย" }
 }
 
 export async function deleteApplicant(id: number): Promise<ActionResult> {
   const user = await requireRole(APPLICANT_EDITORS)
 
   // ตรวจเอกสารแล้ว = มีประวัติต่อเนื่อง (สัมภาษณ์ สัญญา ฯลฯ) ห้ามลบ
-  // (ในฐานข้อมูลตั้ง onDelete: Cascade ไว้ ถ้าลบจะหายทั้งหมด จึงต้องกันที่นี่)
-  const checkCount = await db.documentCheck.count({ where: { applicantId: id } })
-  if (checkCount > 0) {
-    return {
-      ok: false,
-      error: `ลบไม่ได้ เพราะใบสมัครนี้ผ่านการตรวจเอกสารแล้ว ${checkCount} ครั้ง ต้องลบรายการตรวจเอกสารก่อน`,
-    }
-  }
+  // ในฐานข้อมูลตั้ง onDelete: Cascade ไว้ จึงใส่เงื่อนไข "ไม่มีการตรวจเอกสาร" ไว้ในคำสั่งลบเลย
+  // (คำสั่งเดียว ไม่มีช่องว่างให้มีคนบันทึกตรวจเอกสารแทรกระหว่างเช็คกับลบ)
+  const deleted = await db.applicant.deleteMany({ where: { id, documentChecks: { none: {} } } })
 
-  const deleted = await db.applicant.deleteMany({ where: { id } })
-  if (deleted.count === 0) return { ok: false, error: "ไม่พบใบสมัครนี้ อาจถูกลบไปแล้ว" }
+  if (deleted.count === 0) {
+    const checkCount = await db.documentCheck.count({ where: { applicantId: id } })
+    if (checkCount > 0) {
+      return {
+        ok: false,
+        error: `ลบไม่ได้ เพราะใบสมัครนี้ผ่านการตรวจเอกสารแล้ว ${checkCount} ครั้ง ต้องลบรายการตรวจเอกสารก่อน`,
+      }
+    }
+    return { ok: false, error: "ไม่พบใบสมัครนี้ อาจถูกลบไปแล้ว" }
+  }
 
   await audit(user, "delete", "applicant", id)
   revalidatePath("/applicants")
