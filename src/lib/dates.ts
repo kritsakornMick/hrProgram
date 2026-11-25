@@ -12,6 +12,13 @@ export function formatThaiDate(date: Date | string | null | undefined) {
   return dayjs(date).locale("th").format("D MMM BBBB")
 }
 
+/** 25 พฤศจิกายน 2569 (ใช้ในเอกสารที่พิมพ์) */
+export function formatThaiDateFull(date: Date | string | null | undefined) {
+  if (!date) return ""
+  const d = dayjs(date)
+  return d.isValid() ? d.locale("th").format("D MMMM BBBB") : ""
+}
+
 /** วันพุธที่ 25 พฤศจิกายน 2569 */
 export function formatThaiDateLong(date: Date | string | null | undefined) {
   if (!date) return "-"
