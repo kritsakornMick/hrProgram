@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Building2, Phone, Plus, Save } from "lucide-react"
+import { Building2, Phone, Save, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
@@ -102,16 +102,20 @@ export function CompanyForm({ companyId, defaultValues }: Props) {
           </FieldGroup>
         </CardContent>
       </Card>
-
-      {/* แถบปุ่มดำเนินการด้านล่าง */}
+{/* แถบปุ่มดำเนินการด้านล่าง */}
       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
         <Button type="submit" disabled={pending} className="min-w-32 gap-2">
           <Save className="size-4" />
           {pending ? "กำลังบันทึก..." : "บันทึก"}
         </Button>
-        <Link href="/companies" className={buttonVariants({ variant: "outline", className: "min-w-32 gap-2" })}>
-          <Plus className="size-4" />
-          ยกเลิก / กลับหน้ารายการ
+        <Link
+          href="/companies"
+          className={buttonVariants({
+            className: "min-w-32 gap-2 !bg-destructive text-primary-foreground hover:!bg-destructive/90",
+          })}
+        >
+          <X className="size-4" />
+          ยกเลิก
         </Link>
       </div>
     </form>
