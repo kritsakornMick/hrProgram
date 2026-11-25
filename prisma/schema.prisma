@@ -1,0 +1,694 @@
+// =============================================================================
+// โครงสร้างฐานข้อมูลระบบ HR (แปลงจากไฟล์ Access: HR Programing.accdb)
+//
+// กติกา:
+// - ไฟล์นี้แก้ได้เฉพาะ Tech Lead ถ้าต้องการช่องหรือตารางเพิ่ม ให้ขอ Tech Lead
+// - แก้เสร็จต้องรัน `npx prisma migrate dev --name <ชื่อการเปลี่ยนแปลง>`
+//   แล้ว commit ไฟล์ใน prisma/migrations ไปใน PR เดียวกัน
+// - ชื่อในโค้ดเป็นภาษาอังกฤษ คอมเมนต์ /// บอกชื่อเดิมใน Access
+// =============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// ข้อมูลหลัก (Master Data)
+// -----------------------------------------------------------------------------
+
+/// บริษัทในเครือ (tbl-company)
+model Company {
+  id          Int      @id @default(autoincrement())
+  /// รหัสบริษัท
+  code        String   @unique
+  /// ชื่อบริษัท TH
+  nameTh      String
+  /// ชื่อบริษัท ENG
+  nameEn      String?
+  /// เลขภาษี
+  taxId       String?
+  /// ที่อยู่
+  address     String?
+  /// โทรศัพท์
+  phone       String?
+  /// โทรสาร
+  fax         String?
+  /// เมล์
+  email       String?
+  /// รูปหัวกระดาษ (path ของไฟล์ ไม่เก็บรูปในฐานข้อมูล)
+  headerImage String?
+  /// รูปท้ายกระดาษ
+  footerImage String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  customers Customer[]
+
+  @@map("company")
+}
+
+/// หน่วยงานลูกค้า / สัญญางาน (tbl-customer 1)
+model Customer {
+  id                Int       @id @default(autoincrement())
+  /// สถานะ
+  status            String?
+  /// ชื่อหน่วยงาน
+  name              String
+  /// ชื่องาน
+  jobName           String?
+  /// ที่อยู่หน่วยงาน
+  address           String?
+  /// โทรศัพท์หน่วยงาน
+  phone             String?
+  /// อีเมล์หน่วยงาน
+  email             String?
+  /// ภายใต้บริษัท
+  companyId         Int?
+  /// วันเริ่มงาน
+  startDate         DateTime? @db.Date
+  /// วันสิ้นสุดงาน
+  endDate           DateTime? @db.Date
+  /// มูลค่าของงาน (บาท)
+  contractValue     Decimal?  @db.Decimal(14, 2)
+  /// ค่าปรับต่อวัน (บาท)
+  dailyPenalty      Decimal?  @db.Decimal(12, 2)
+  /// จำนวนพนักงาน (คน)
+  headcount         Int?
+  /// พนักงานสำรอง (คน)
+  reserveHeadcount  Int?
+  /// หมายเหตุ
+  note              String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  company    Company?          @relation(fields: [companyId], references: [id])
+  contacts   CustomerContact[]
+  interviews Interview[]
+
+  @@index([companyId])
+  @@map("customer")
+}
+
+/// ผู้ติดต่อของหน่วยงานลูกค้า (tbl-customer 2)
+model CustomerContact {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  /// ชื่อผู้ติดต่อ
+  name       String
+  /// ฝ่าย
+  department String?
+  /// เบอร์โทรผู้ติดต่อ
+  phone      String?
+  /// อีเมลผู้ติดต่อ
+  email      String?
+  /// หมายเหตุ
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_contact")
+}
+
+/// พนักงานฝ่าย HR ที่ใช้ระบบ (tbl-staff)
+model Staff {
+  id               Int       @id @default(autoincrement())
+  /// รหัสพนักงาน
+  code             String?   @unique
+  /// ชื่อพนักงาน
+  name             String
+  /// ตำแหน่ง
+  position         String?
+  /// ประจำหน่วยงาน
+  department       String?
+  /// เลขบัตรประชาชน
+  nationalId       String?
+  /// ที่อยู่
+  address          String?
+  /// โทรศัพท์
+  phone            String?
+  /// เมล์
+  email            String?
+  /// สถานะ
+  status           String?
+  /// วันที่เข้าทำงาน
+  startDate        DateTime? @db.Date
+  /// วันที่หยุดทำงาน
+  endDate          DateTime? @db.Date
+  /// บัญชีธนาคาร
+  bankName         String?
+  /// ประเภทบัญชี
+  bankAccountType  String?
+  /// เลขบัญชี
+  bankAccountNo    String?
+  /// กรณีฉุกเฉินติดต่อ
+  emergencyContact String?
+  /// สถานที่ทำงาน
+  workplace        String?
+  /// เบอร์โทรติดต่อ
+  contactPhone     String?
+  /// หมายเหตุ
+  note             String?
+  /// รูปพนักงาน (path ของไฟล์)
+  photoPath        String?
+  /// ลายเซ็นต์ (path ของไฟล์) ใช้ในเอกสาร PDF
+  signaturePath    String?
+  /// บัญชีผู้ใช้ที่ผูกกับพนักงานคนนี้ (ถ้ามี)
+  userId           String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user                   User?                     @relation(fields: [userId], references: [id])
+  documentChecks         DocumentCheck[]
+  interviews             Interview[]
+  interviewReferralsMade InterviewReferralLetter[]
+  assignmentLettersMade  AssignmentLetter[]
+
+  @@map("staff")
+}
+
+// -----------------------------------------------------------------------------
+// ขั้นตอนงานสรรหา: ใบสมัคร → ตรวจเอกสาร → สัมภาษณ์ → ออกเอกสาร
+// -----------------------------------------------------------------------------
+
+/// ใบสมัครงาน (tbl-ใบสมัครงาน)
+model Applicant {
+  id                       Int       @id @default(autoincrement())
+  /// วันที่สมัคร
+  appliedAt                DateTime  @default(now()) @db.Date
+  /// ตำแหน่งงาน
+  position                 String?
+  /// เงินเดือนที่ต้องการ
+  expectedSalary           Decimal?  @db.Decimal(12, 2)
+
+  // --- ข้อมูลส่วนตัว ---
+  /// คำนำหน้า-ชื่อ-สกุล (ไทย)
+  fullNameTh               String
+  /// คำนำหน้า-ชื่อ-สกุล (eng)
+  fullNameEn               String?
+  /// เลขบัตรประชาชน 13 หลัก
+  nationalId               String?
+  /// วันที่ออกบัตร
+  idCardIssuedAt           DateTime? @db.Date
+  /// วันที่บัตรหมดอายุ
+  idCardExpiresAt          DateTime? @db.Date
+  /// วันเกิด
+  birthDate                DateTime? @db.Date
+  /// น้ำหนัก (กก)
+  weightKg                 Decimal?  @db.Decimal(5, 1)
+  /// ส่วนสูง (ซม)
+  heightCm                 Decimal?  @db.Decimal(5, 1)
+  /// เชื้อชาติ
+  ethnicity                String?
+  /// สัญชาติ
+  nationality              String?
+  /// ศาสนา
+  religion                 String?
+
+  // --- ที่อยู่และการติดต่อ ---
+  /// เลขที่
+  addressNo                String?
+  /// หมู่ที่
+  moo                      String?
+  /// ถนน
+  road                     String?
+  /// ตำบล-แขวง
+  subdistrict              String?
+  /// อำเภอ-เขต
+  district                 String?
+  /// จังหวัด
+  province                 String?
+  /// โทรศัพท์บ้าน
+  homePhone                String?
+  /// โทรศัพท์มือถือ
+  mobilePhone              String?
+  /// ปัจจุบันพักอยู่กับ
+  livingWith               String?
+  /// โทรศัพท์ที่พัก
+  residencePhone           String?
+
+  // --- ครอบครัว ---
+  /// ชื่อบิดา
+  fatherName               String?
+  /// บิดาอาชีพ
+  fatherOccupation         String?
+  /// ชื่อมารดา
+  motherName               String?
+  /// มารดาอาชีพ
+  motherOccupation         String?
+  /// จำนวนพี่น้อง (คน)
+  siblingsCount            Int?
+  /// เป็นคนที่
+  birthOrder               Int?
+  /// สถานภาพ
+  maritalStatus            String?
+  /// ชื่อคู่สมรส
+  spouseName               String?
+  /// โทรศัพท์คู่สมรส
+  spousePhone              String?
+  /// จำนวนบุตร (คน)
+  childrenCount            Int?
+  /// ตั้งครรภ์
+  isPregnant               Boolean   @default(false)
+  /// ตั้งครรภ์กี่เดือน
+  pregnancyMonths          Int?
+  /// ราชการทหาร
+  militaryStatus           String?
+
+  // --- การศึกษาและความสามารถ ---
+  /// ระดับการศึกษา
+  educationLevel           String?
+  /// ชื่อสถานศึกษา (สุดท้าย)
+  lastInstitution          String?
+  /// ตั้งอยู่ในจังหวัด
+  institutionProvince      String?
+  /// เกรดเฉลี่ย
+  gpa                      Decimal?  @db.Decimal(3, 2)
+  /// สาขาวิชา
+  major                    String?
+  /// ปีที่สำเร็จ (พ.ศ.)
+  graduationYear           String?
+  /// ความสามารถด้านภาษา
+  languageSkills           String?
+  /// พูดอ่านเขียน (ระบุ)
+  languageDetail           String?
+  /// พิมพ์ดีดไทย (คำ/นาที)
+  thaiTypingWpm            Int?
+  /// พิมพ์ดีด eng (คำ/นาที)
+  englishTypingWpm         Int?
+  canUseWord               Boolean   @default(false)
+  canUseExcel              Boolean   @default(false)
+  canUsePowerpoint         Boolean   @default(false)
+  /// คอมพิวเตอร์ อื่นๆ
+  otherComputerSkills      String?
+  /// ใบขับขี่มอเตอร์ไซต์
+  hasMotorcycleLicense     Boolean   @default(false)
+  /// ใบขับขี่รถยนต์
+  hasCarLicense            Boolean   @default(false)
+  /// ชนิดใบขับขี่รถยนต์
+  carLicenseType           String?
+  /// วันที่ออกใบขับขี่
+  licenseIssuedAt          DateTime? @db.Date
+  /// วันที่ใบขับขี่หมดอายุ
+  licenseExpiresAt         DateTime? @db.Date
+
+  // --- ประวัติการทำงาน ---
+  /// ชื่อหน่วยงานที่ทำงานล่าสุด
+  lastEmployer             String?
+  /// ตำแหน่งงานล่าสุด
+  lastPosition             String?
+  /// เงินเดือนสุดท้าย (บาท)
+  lastSalary               Decimal?  @db.Decimal(12, 2)
+  /// ระยะเวลาทำงาน (ปี)
+  lastWorkDuration         String?
+  /// สาเหตุที่ออก
+  leavingReason            String?
+
+  // --- อื่นๆ ---
+  /// กรณีฉุกเฉินติดต่อ
+  emergencyContactName     String?
+  /// ความสัมพันธ์
+  emergencyContactRelation String?
+  /// โทรศัพท์ฉุกเฉิน
+  emergencyContactPhone    String?
+  /// ทราบข่าวรับสมัครงานจาก
+  jobSource                String?
+  /// เคยต้องโทษคดีไหม
+  hasCriminalRecord        Boolean   @default(false)
+  /// เคยต้องโทษคดี (ระบุ)
+  criminalRecordDetail     String?
+  /// ความยินยอม: เพื่อตรวจอาชญากรรม
+  consentCriminalCheck     String?
+  /// ความยินยอม: เพื่อตรวจสุขภาพ
+  consentHealthCheck       String?
+  /// ความยินยอม: เพื่อพิสูจน์ตัวตน
+  consentIdentity          String?
+  /// ความยินยอม: เพื่ออ้างอิงประวัติ
+  consentReference         String?
+
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  documentChecks DocumentCheck[]
+
+  @@index([fullNameTh])
+  @@index([nationalId])
+  @@map("applicant")
+}
+
+/// ตรวจเอกสารสมัครงาน (tbl-ตรวจเอกสารสมัครงาน)
+model DocumentCheck {
+  id                   Int       @id @default(autoincrement())
+  applicantId          Int
+  /// พนักงานผู้ตรวจ
+  checkedById          Int?
+  /// วันที่ตรวจเอกสาร
+  checkedAt            DateTime? @db.Date
+  hasPhoto             Boolean   @default(false)
+  hasIdCard            Boolean   @default(false)
+  hasHouseRegistration Boolean   @default(false)
+  hasEducationCert     Boolean   @default(false)
+  hasCarLicense        Boolean   @default(false)
+  /// ชนิดใบขับขี่
+  carLicenseType       String?
+  hasMotorcycleLicense Boolean   @default(false)
+  hasDisabilityCard    Boolean   @default(false)
+  hasMilitaryDoc       Boolean   @default(false)
+  hasOther             Boolean   @default(false)
+  /// ตรวจเอกสารครบแล้ว
+  isComplete           Boolean   @default(false)
+  /// ความคิดเห็น
+  comment              String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  applicant   Applicant            @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  checkedBy   Staff?               @relation(fields: [checkedById], references: [id])
+  attachments DocumentAttachment[]
+  interviews  Interview[]
+
+  @@index([applicantId])
+  @@index([checkedById])
+  @@map("document_check")
+}
+
+/// ประเภทไฟล์แนบ (ช่องแนบไฟล์ 8 ช่องใน Access)
+enum AttachmentKind {
+  PHOTO              // แนบรูปถ่าย
+  ID_CARD            // แนบสำเนาบัตร
+  HOUSE_REGISTRATION // แนบทะเบียนบ้าน
+  EDUCATION_CERT     // แนบสำเนาวุฒิ
+  CAR_LICENSE        // แนบใบขับขี่รถยนต์
+  MOTORCYCLE_LICENSE // แนบใบขับขี่มอเตอร์ไซต์
+  DISABILITY_CARD    // แนบบัตรคนพิการ
+  MILITARY_DOC       // แนบเอกสารทหาร
+  OTHER
+}
+
+/// ไฟล์แนบของการตรวจเอกสาร (เก็บไฟล์บน disk ในตารางเก็บแค่ path)
+model DocumentAttachment {
+  id              Int            @id @default(autoincrement())
+  documentCheckId Int
+  kind            AttachmentKind
+  filePath        String
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  uploadedAt      DateTime       @default(now())
+
+  documentCheck DocumentCheck @relation(fields: [documentCheckId], references: [id], onDelete: Cascade)
+
+  @@index([documentCheckId])
+  @@map("document_attachment")
+}
+
+/// สัมภาษณ์ / ทดลองงาน / ประเมิน (tbl-สัมภาษณ์)
+model Interview {
+  id                 Int       @id @default(autoincrement())
+  documentCheckId    Int
+  /// หน่วยงานลูกค้าที่ส่งไปทำงาน
+  customerId         Int?
+  /// พนักงาน HR ผู้รับผิดชอบ
+  staffId            Int?
+  /// วันที่สัมภาษณ์
+  interviewedAt      DateTime? @db.Date
+  /// ผลการสัมภาษณ์ (เช่น ผ่าน / ไม่ผ่าน)
+  result             String?
+  /// สาเหตุเพราะ
+  resultReason       String?
+  /// สถานะการจ้างงาน
+  employmentStatus   String?
+  /// อัตราค่าจ้าง
+  wageRate           Decimal?  @db.Decimal(12, 2)
+  /// ตำแหน่งงาน
+  position           String?
+  /// วันที่เริ่มงาน
+  startDate          DateTime? @db.Date
+  /// วันที่เริ่มทดลองงาน
+  probationStartDate DateTime? @db.Date
+  /// วันที่จบทดลองงาน
+  probationEndDate   DateTime? @db.Date
+  /// ทดลองงาน (วัน)
+  probationDays      Int?
+  /// วันที่ทำการประเมิน
+  evaluatedAt        DateTime? @db.Date
+  /// ผลการประเมิน
+  evaluationResult   String?
+  /// ความคิดเห็น
+  comment            String?
+  /// บัญชีธนาคาร
+  bankName           String?
+  /// เลขบัญชีธนาคาร
+  bankAccountNo      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  documentCheck          DocumentCheck                  @relation(fields: [documentCheckId], references: [id], onDelete: Cascade)
+  customer               Customer?                      @relation(fields: [customerId], references: [id])
+  staff                  Staff?                         @relation(fields: [staffId], references: [id])
+  employmentContracts    EmploymentContract[]
+  backgroundChecks       BackgroundCheckAuthorization[]
+  interviewReferrals     InterviewReferralLetter[]
+  assignmentLetters      AssignmentLetter[]
+  guaranteeContracts     GuaranteeContract[]
+
+  @@index([documentCheckId])
+  @@index([customerId])
+  @@index([staffId])
+  @@index([interviewedAt])
+  @@map("interview")
+}
+
+// -----------------------------------------------------------------------------
+// เอกสารที่ออกหลังสัมภาษณ์
+// -----------------------------------------------------------------------------
+
+/// สัญญาจ้างงาน (ตาราง ~TMPCLP ใน Access ที่ใช้กับ rpt-สัญญาจ้างงาน)
+model EmploymentContract {
+  id           Int       @id @default(autoincrement())
+  interviewId  Int
+  /// วันที่ทำสัญญา
+  contractDate DateTime? @db.Date
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId])
+  @@map("employment_contract")
+}
+
+/// หนังสือมอบอำนาจและตรวจประวัติ (tbl-มอบอำนาจและตรวจประวัติ)
+model BackgroundCheckAuthorization {
+  id                 Int       @id @default(autoincrement())
+  interviewId        Int
+  /// มอบอำนาจให้
+  granteeName        String?
+  /// เลขบัตรผู้รับมอบ
+  granteeNationalId  String?
+  /// ที่ออกบัตรผู้รับ
+  granteeIdIssuedBy  String?
+  /// วันที่บัตรหมดอายุ (ผู้รับมอบ)
+  granteeIdExpiresAt DateTime? @db.Date
+  /// มีผลบังคับใช้เมื่อ
+  effectiveDate      DateTime? @db.Date
+  /// มอบอำนาจเพื่อ
+  purpose            String?
+  /// ที่ออกบัตรผู้มอบ
+  grantorIdIssuedBy  String?
+  /// วันที่ทำหนังสือ
+  documentDate       DateTime? @db.Date
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId])
+  @@map("background_check_authorization")
+}
+
+/// หนังสือส่งตัวพนักงานเพื่อเข้าสัมภาษณ์ (tbl-หนังสือส่งตัวพนักงานเพื่อเข้าสัมภาษณ์)
+model InterviewReferralLetter {
+  id           Int       @id @default(autoincrement())
+  interviewId  Int
+  /// เลขที่หนังสือ
+  letterNo     String?
+  /// วันที่ทำหนังสือ
+  documentDate DateTime? @db.Date
+  /// เรียน
+  addressedTo  String?
+  /// พนักงานทำหนังสือ
+  issuedById   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  issuedBy  Staff?    @relation(fields: [issuedById], references: [id])
+
+  @@index([interviewId])
+  @@map("interview_referral_letter")
+}
+
+/// หนังสือส่งตัวพนักงานเพื่อเข้าปฏิบัติงาน (tbl-หนังสือส่งตัวพนักงานเพื่อเข้าปฏิบัติงาน)
+model AssignmentLetter {
+  id           Int       @id @default(autoincrement())
+  interviewId  Int
+  /// เลขที่หนังสือ
+  letterNo     String?
+  /// วันที่ทำหนังสือ
+  documentDate DateTime? @db.Date
+  /// เรียน
+  addressedTo  String?
+  /// พนักงานทำหนังสือ
+  issuedById   Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  issuedBy  Staff?    @relation(fields: [issuedById], references: [id])
+
+  @@index([interviewId])
+  @@map("assignment_letter")
+}
+
+/// สัญญาค้ำประกันบุคคลเข้าทำงาน (tbl-สัญญาค้ำประกันบุคคลเข้าทำงาน)
+model GuaranteeContract {
+  id                 Int       @id @default(autoincrement())
+  interviewId        Int
+  /// วันที่ทำสัญญาค้ำประกัน
+  contractDate       DateTime? @db.Date
+  /// ชื่อผู้ค้ำ
+  guarantorName      String?
+  /// อายุผู้ค้ำ
+  guarantorAge       Int?
+  /// เลขบัตรผู้ค้ำ
+  guarantorNationalId String?
+  /// ที่อยู่เลขที่
+  addressNo          String?
+  /// หมู่ที่
+  moo                String?
+  /// ถนน
+  road               String?
+  /// ตำบล-แขวง
+  subdistrict        String?
+  /// อำเภอ-เขต
+  district           String?
+  /// จังหวัด
+  province           String?
+  /// โทรศัพท์ผู้ค้ำ
+  guarantorPhone     String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  interview Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@index([interviewId])
+  @@map("guarantee_contract")
+}
+
+// -----------------------------------------------------------------------------
+// ระบบ: ประวัติการเข้าถึงข้อมูล (PDPA)
+// -----------------------------------------------------------------------------
+
+/// บันทึกว่าใครดู/เพิ่ม/แก้/ลบข้อมูลอะไร เมื่อไหร่ ใช้ผ่าน src/lib/audit.ts เท่านั้น
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    String?
+  /// create / update / delete / view / export
+  action    String
+  /// ชื่อ model เช่น company, applicant
+  entity    String
+  entityId  String?
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+// -----------------------------------------------------------------------------
+// Better Auth (ล็อกอิน) — โครงสร้างตาม Better Auth + admin plugin ห้ามแก้ชื่อช่อง
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  /// admin / hr / viewer (ดู src/lib/permissions.ts)
+  role          String?   @default("viewer")
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+
+  sessions  Session[]
+  accounts  Account[]
+  staff     Staff?
+  auditLogs AuditLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}

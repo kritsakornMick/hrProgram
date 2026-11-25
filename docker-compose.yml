@@ -1,0 +1,23 @@
+# บริการที่ต้องใช้ตอนพัฒนาในเครื่อง: ฐานข้อมูล + ตัวแปลง PDF
+# เปิด:  docker compose up -d     ปิด:  docker compose down
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hr
+      POSTGRES_PASSWORD: hr_dev
+      POSTGRES_DB: hr
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+
+volumes:
+  dbdata:
