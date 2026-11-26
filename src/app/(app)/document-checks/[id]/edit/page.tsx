@@ -7,18 +7,22 @@ import { formatThaiDate, toDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
 import { DocumentCheckForm } from "../../document-check-form"
+import { DOCUMENT_CHECK_EDITORS } from "../../permissions"
 
 export const metadata: Metadata = { title: "แก้ไขแบบตรวจเอกสารสมัครงาน" }
 
 export default async function EditDocumentCheckPage({ params }: PageProps<"/document-checks/[id]/edit">) {
-  const user = await requirePageRole(["admin", "hr"])
+  const user = await requirePageRole(DOCUMENT_CHECK_EDITORS)
   const { id } = await params
   const documentCheckId = Number(id)
-  if (!Number.isInteger(documentCheckId) || documentCheckId <= 0) notFound()
+  if (!Number.isInteger(documentCheckId) || documentCheckId <= 0 || documentCheckId > 2_147_483_647) notFound()
 
-  const [record, applicants, staffList] = await Promise.all([
-    db.documentCheck.findUnique({ where: { id: documentCheckId } }),
+  const record = await db.documentCheck.findUnique({ where: { id: documentCheckId } })
+  if (!record) notFound()
+
+  const [applicants, staffList] = await Promise.all([
     db.applicant.findMany({
+      where: { OR: [{ isDraft: false }, { id: record.applicantId }] },
       orderBy: { id: "desc" },
       select: { id: true, fullNameTh: true, position: true, appliedAt: true },
     }),
@@ -27,8 +31,6 @@ export default async function EditDocumentCheckPage({ params }: PageProps<"/docu
       select: { id: true, code: true, name: true, position: true },
     }),
   ])
-
-  if (!record) notFound()
 
   await auditView(user, "document_check", record.id)
 

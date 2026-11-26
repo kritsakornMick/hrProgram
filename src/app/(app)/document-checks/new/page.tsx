@@ -5,15 +5,17 @@ import { formatThaiDate, toDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
 import { DocumentCheckForm } from "../document-check-form"
+import { DOCUMENT_CHECK_EDITORS } from "../permissions"
 import { createEmptyDocumentCheck } from "../schema"
 
 export const metadata: Metadata = { title: "เพิ่มแบบตรวจเอกสารสมัครงาน" }
 
 export default async function NewDocumentCheckPage() {
-  const user = await requirePageRole(["admin", "hr"])
+  const user = await requirePageRole(DOCUMENT_CHECK_EDITORS)
 
   const [applicants, staffList, currentStaff] = await Promise.all([
     db.applicant.findMany({
+      where: { isDraft: false },
       orderBy: { id: "desc" },
       select: { id: true, fullNameTh: true, position: true, appliedAt: true },
     }),

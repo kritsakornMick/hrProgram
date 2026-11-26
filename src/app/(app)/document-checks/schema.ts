@@ -9,10 +9,31 @@ export const CAR_LICENSE_TYPES = [
   "ตลอดชีพ",
 ] as const
 
+const positiveIntString = z
+  .string()
+  .trim()
+  .refine((val) => {
+    const num = Number(val)
+    return /^\d+$/.test(val) && Number.isSafeInteger(num) && num > 0 && num <= 2_147_483_647
+  }, "รหัสอ้างอิงไม่ถูกต้อง")
+
 export const documentCheckSchema = z
   .object({
-    applicantId: z.string().trim().min(1, "กรุณาเลือกผู้สมัครงาน"),
-    checkedById: z.string().trim().optional().default(""),
+    applicantId: z
+      .string()
+      .trim()
+      .min(1, "กรุณาเลือกผู้สมัครงาน")
+      .pipe(positiveIntString),
+    checkedById: z
+      .string()
+      .trim()
+      .optional()
+      .default("")
+      .refine((val) => {
+        if (!val) return true
+        const num = Number(val)
+        return /^\d+$/.test(val) && Number.isSafeInteger(num) && num > 0 && num <= 2_147_483_647
+      }, "รหัสผู้ตรวจไม่ถูกต้อง"),
     checkedAt: z.string().trim().min(1, "กรุณาระบุวันที่ตรวจเอกสาร"),
     hasPhoto: z.boolean().default(false),
     hasIdCard: z.boolean().default(false),

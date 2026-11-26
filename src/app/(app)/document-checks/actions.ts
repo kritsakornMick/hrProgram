@@ -8,9 +8,9 @@ import { parseDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { requireRole } from "@/lib/session"
 import { emptyToNull } from "@/lib/validators"
+import { DOCUMENT_CHECK_EDITORS } from "./permissions"
 import { documentCheckSchema, type DocumentCheckInput, type DocumentCheckParsed } from "./schema"
 
-const DOCUMENT_CHECK_EDITORS = ["admin", "hr"] as const
 const ENTITY = "document_check"
 
 function toDbData(parsed: DocumentCheckParsed) {
@@ -46,12 +46,15 @@ export async function createDocumentCheck(input: DocumentCheckInput): Promise<Ac
   }
 
   const applicantId = Number(parsed.data.applicantId)
-  const applicant = await db.applicant.findUnique({ where: { id: applicantId }, select: { id: true } })
+  const applicant = await db.applicant.findFirst({
+    where: { id: applicantId, isDraft: false },
+    select: { id: true },
+  })
   if (!applicant) {
     return {
       ok: false,
-      error: "ไม่พบข้อมูลผู้สมัครที่เลือก",
-      fieldErrors: { applicantId: ["ไม่พบผู้สมัครในระบบ"] },
+      error: "ไม่พบข้อมูลผู้สมัครที่เลือก หรือใบสมัครยังเป็นฉบับร่าง",
+      fieldErrors: { applicantId: ["ไม่พบผู้สมัครในระบบหรือยังเป็นฉบับร่าง"] },
     }
   }
 
@@ -87,20 +90,28 @@ export async function createDocumentCheck(input: DocumentCheckInput): Promise<Ac
 
 export async function updateDocumentCheck(id: number, input: DocumentCheckInput): Promise<ActionResult> {
   const user = await requireRole(DOCUMENT_CHECK_EDITORS)
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) {
+    return { ok: false, error: "รหัสแบบตรวจเอกสารไม่ถูกต้อง" }
+  }
+
   const parsed = documentCheckSchema.safeParse(input)
   if (!parsed.success) {
     return { ok: false, error: "กรุณาตรวจสอบข้อมูล", fieldErrors: z.flattenError(parsed.error).fieldErrors }
   }
 
-  const applicant = await db.applicant.findUnique({
-    where: { id: Number(parsed.data.applicantId) },
+  const applicantId = Number(parsed.data.applicantId)
+  const applicant = await db.applicant.findFirst({
+    where: {
+      id: applicantId,
+      OR: [{ isDraft: false }, { documentChecks: { some: { id } } }],
+    },
     select: { id: true },
   })
   if (!applicant) {
     return {
       ok: false,
-      error: "ไม่พบข้อมูลผู้สมัครที่เลือก",
-      fieldErrors: { applicantId: ["ไม่พบผู้สมัครในระบบ"] },
+      error: "ไม่พบข้อมูลผู้สมัครที่เลือก หรือใบสมัครยังเป็นฉบับร่าง",
+      fieldErrors: { applicantId: ["ไม่พบผู้สมัครในระบบหรือยังเป็นฉบับร่าง"] },
     }
   }
 
@@ -139,23 +150,28 @@ export async function updateDocumentCheck(id: number, input: DocumentCheckInput)
 
 export async function deleteDocumentCheck(id: number): Promise<ActionResult> {
   const user = await requireRole(DOCUMENT_CHECK_EDITORS)
-
-  const existing = await db.documentCheck.findUnique({
-    where: { id },
-    include: { _count: { select: { interviews: true } } },
-  })
-  if (!existing) {
-    return { ok: false, error: "ไม่พบแบบตรวจเอกสารนี้ อาจถูกลบไปแล้ว" }
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) {
+    return { ok: false, error: "รหัสแบบตรวจเอกสารไม่ถูกต้อง" }
   }
 
-  if (existing._count.interviews > 0) {
+  const deleted = await db.documentCheck.deleteMany({
+    where: { id, interviews: { none: {} } },
+  })
+
+  if (deleted.count === 0) {
+    const existing = await db.documentCheck.findUnique({
+      where: { id },
+      include: { _count: { select: { interviews: true } } },
+    })
+    if (!existing) {
+      return { ok: false, error: "ไม่พบแบบตรวจเอกสารนี้ อาจถูกลบไปแล้ว" }
+    }
     return {
       ok: false,
       error: `ลบไม่ได้ เพราะมีข้อมูลการสัมภาษณ์งานเชื่อมโยงอยู่ ${existing._count.interviews} รายการ`,
     }
   }
 
-  await db.documentCheck.delete({ where: { id } })
   await audit(user, "delete", ENTITY, id)
   revalidatePath("/document-checks")
   return { ok: true, message: "ลบแบบตรวจเอกสารเรียบร้อย" }

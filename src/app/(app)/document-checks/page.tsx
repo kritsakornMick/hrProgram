@@ -2,18 +2,24 @@ import { CheckCircle2, Clock, FileCheck2, Pencil, Plus, Search } from "lucide-re
 import type { Metadata } from "next"
 import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
+import { Pagination, parsePage } from "@/components/pagination"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import type { Prisma } from "@/generated/prisma/client"
 import { formatThaiDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { hasRole, toRole } from "@/lib/permissions"
 import { requireUser } from "@/lib/session"
 import { DeleteDocumentCheckButton } from "./delete-document-check-button"
+import { DOCUMENT_CHECK_EDITORS } from "./permissions"
 
 export const metadata: Metadata = { title: "ตรวจเอกสารสมัครงาน" }
+
+const PAGE_SIZE = 20
+const MAX_PG_INT = 2_147_483_647
 
 function countCheckedDocs(item: {
   hasPhoto: boolean
@@ -41,28 +47,42 @@ function countCheckedDocs(item: {
 
 export default async function DocumentChecksPage({ searchParams }: PageProps<"/document-checks">) {
   const user = await requireUser()
-  const canEdit = hasRole(toRole(user.role), ["admin", "hr"])
-  const { q } = await searchParams
+  const canEdit = hasRole(toRole(user.role), DOCUMENT_CHECK_EDITORS)
+  const { q, page: pageParam } = await searchParams
   const query = typeof q === "string" ? q.trim() : ""
-  const numericQuery = /^\d+$/.test(query) ? Number(query) : null
+  const digits = query.replace(/[\s-]/g, "")
+  const parsedInt = /^\d+$/.test(query) ? Number(query) : null
+  const numericQuery = parsedInt !== null && parsedInt > 0 && parsedInt <= MAX_PG_INT ? parsedInt : null
+
+  const where: Prisma.DocumentCheckWhereInput | undefined = query
+    ? {
+        OR: [
+          ...(numericQuery ? [{ id: numericQuery }, { applicantId: numericQuery }] : []),
+          ...(/^\d+$/.test(digits) ? [{ applicant: { nationalId: { contains: digits } } }] : []),
+          { applicant: { fullNameTh: { contains: query, mode: "insensitive" } } },
+          { applicant: { position: { contains: query, mode: "insensitive" } } },
+          { checkedBy: { name: { contains: query, mode: "insensitive" } } },
+        ],
+      }
+    : undefined
+
+  const total = await db.documentCheck.count({ where })
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const page = Math.min(parsePage(pageParam), totalPages)
 
   const documentChecks = await db.documentCheck.findMany({
-    where: query
-      ? {
-          OR: [
-            ...(numericQuery ? [{ id: numericQuery }, { applicantId: numericQuery }] : []),
-            { applicant: { fullNameTh: { contains: query, mode: "insensitive" } } },
-            { applicant: { position: { contains: query, mode: "insensitive" } } },
-            { checkedBy: { name: { contains: query, mode: "insensitive" } } },
-          ],
-        }
-      : undefined,
+    where,
     orderBy: [{ checkedAt: "desc" }, { id: "desc" }],
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
     include: {
       applicant: { select: { id: true, fullNameTh: true, position: true, appliedAt: true } },
       checkedBy: { select: { id: true, code: true, name: true } },
     },
   })
+
+  const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const to = Math.min(page * PAGE_SIZE, total)
 
   return (
     <>
@@ -82,13 +102,14 @@ export default async function DocumentChecksPage({ searchParams }: PageProps<"/d
 
       <Card>
         <CardContent className="space-y-4">
-          <form className="relative max-w-sm">
+          <form className="relative max-w-md">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               name="q"
               defaultValue={query}
-              placeholder="ค้นหาเลขที่แบบตรวจ ชื่อผู้สมัคร หรือผู้ตรวจ"
+              placeholder="ค้นหาเลขที่แบบตรวจ ชื่อผู้สมัคร เลขบัตร หรือผู้ตรวจ"
               className="pl-8"
+              aria-label="ค้นหาแบบตรวจเอกสาร"
             />
           </form>
 
@@ -158,9 +179,14 @@ export default async function DocumentChecksPage({ searchParams }: PageProps<"/d
             </TableBody>
           </Table>
 
-          <p className="text-sm text-muted-foreground">
-            ทั้งหมด {documentChecks.length.toLocaleString("th-TH")} รายการ
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              {total > 0
+                ? `แสดง ${from.toLocaleString("th-TH")}–${to.toLocaleString("th-TH")} จากทั้งหมด ${total.toLocaleString("th-TH")} รายการ`
+                : "ทั้งหมด 0 รายการ"}
+            </p>
+            <Pagination page={page} totalPages={totalPages} basePath="/document-checks" searchParams={{ q: query }} />
+          </div>
         </CardContent>
       </Card>
     </>
