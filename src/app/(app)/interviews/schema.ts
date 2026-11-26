@@ -16,14 +16,29 @@ export const bankOptions = [
   "ธนาคารออมสิน",
 ] as const
 
+/** ช่อง id ในฐานข้อมูลเป็น Int (สูงสุด 2,147,483,647) ค่าที่เกินจะทำให้ Prisma error */
+const MAX_DB_INT = 2_147_483_647
+
+function isDbId(val: string) {
+  if (!/^\d+$/.test(val)) return false
+  const num = Number(val)
+  return num > 0 && num <= MAX_DB_INT
+}
+
 const optionalPositiveInt = (label: string) =>
   z
     .string()
     .trim()
     .optional()
-    .refine((val) => !val || (/^\d+$/.test(val) && Number.parseInt(val, 10) > 0), {
+    .refine((val) => !val || isDbId(val), {
       message: `${label}ไม่ถูกต้อง`,
     })
+
+/** อัตราค่าจ้าง: ช่อง Decimal(12, 2) เก็บได้ไม่เกิน 10 หลัก + ทศนิยม 2 ตำแหน่ง */
+const WAGE_PATTERN = /^\d{1,10}(\.\d{1,2})?$/
+
+/** จำนวนวันทดลองงานสูงสุดที่ยอมให้กรอก */
+export const MAX_PROBATION_DAYS = 365
 
 const optionalDateString = (label: string) =>
   z
@@ -43,7 +58,7 @@ export const interviewSchema = z.object({
     .string()
     .trim()
     .min(1, "กรุณาเลือกผู้สมัครงาน (ใบตรวจเอกสาร)")
-    .refine((val) => /^\d+$/.test(val) && Number.parseInt(val, 10) > 0, "รหัสใบตรวจเอกสารไม่ถูกต้อง"),
+    .refine(isDbId, "รหัสใบตรวจเอกสารไม่ถูกต้อง"),
   companyFilterId: optionalPositiveInt("รหัสบริษัท"),
   customerId: optionalPositiveInt("รหัสหน่วยงานลูกค้า"),
   staffId: optionalPositiveInt("รหัสผู้สัมภาษณ์"),
@@ -63,18 +78,20 @@ export const interviewSchema = z.object({
     .string()
     .trim()
     .optional()
-    .refine((val) => {
-      if (!val) return true
-      const num = Number(val)
-      return Number.isFinite(num) && num >= 0
-    }, "อัตราค่าจ้างต้องเป็นตัวเลขที่ไม่ติดลบ"),
+    .refine(
+      (val) => !val || WAGE_PATTERN.test(val),
+      "ใส่ตัวเลขไม่เกิน 9,999,999,999.99 (ทศนิยม 2 ตำแหน่ง)",
+    ),
   position: z.string().trim().max(200, "ตำแหน่งต้องไม่เกิน 200 ตัวอักษร").optional(),
   startDate: optionalDateString("วันที่เริ่มงาน"),
   probationDays: z
     .string()
     .trim()
     .optional()
-    .refine((val) => !val || (/^\d+$/.test(val) && Number.parseInt(val, 10) >= 1), "จำนวนวันทดลองงานต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป"),
+    .refine(
+      (val) => !val || (/^\d{1,4}$/.test(val) && Number(val) >= 1 && Number(val) <= MAX_PROBATION_DAYS),
+      `จำนวนวันทดลองงานต้องเป็นจำนวนเต็ม 1–${MAX_PROBATION_DAYS} วัน`,
+    ),
   probationStartDate: optionalDateString("วันที่เริ่มทดลองงาน"),
   probationEndDate: optionalDateString("วันที่จบทดลองงาน"),
   evaluatedAt: optionalDateString("วันที่ทำการประเมิน"),
