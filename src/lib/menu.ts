@@ -67,7 +67,7 @@ export const MENU: MenuGroup[] = [
     tone: "green",
     items: [
       { title: "ใบสมัครงาน", href: "/applicants", icon: FileText, screen: "#4–#5", owner: "น้อง A", ready: true },
-      { title: "ตรวจเอกสารสมัครงาน", href: "/document-checks", icon: FileCheck2, screen: "#6", owner: "น้อง A", ready: false },
+      { title: "ตรวจเอกสารสมัครงาน", href: "/document-checks", icon: FileCheck2, screen: "#6", owner: "น้อง A", ready: true },
       { title: "สัมภาษณ์งาน", href: "/interviews", icon: Handshake, screen: "#7", owner: "น้อง A", ready: false },
       { title: "มอบอำนาจและตรวจประวัติ", href: "/background-checks", icon: IdCard, screen: "#11", owner: "น้อง B", ready: false },
       { title: "หนังสือส่งตัวเพื่อเข้าสัมภาษณ์", href: "/interview-referrals", icon: Send, screen: "#9", owner: "น้อง B", ready: false },
