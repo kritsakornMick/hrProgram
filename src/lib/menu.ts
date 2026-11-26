@@ -82,7 +82,7 @@ export const MENU: MenuGroup[] = [
     icon: FolderOpen,
     tone: "orange",
     items: [
-      { title: "พิมพ์เอกสาร (12 แบบ)", href: "/documents", icon: FolderOpen, screen: "#13", owner: "น้อง B", ready: false },
+      { title: "พิมพ์เอกสาร (12 แบบ)", href: "/documents", icon: FolderOpen, screen: "#13", owner: "น้อง B", ready: true },
     ],
   },
   {
