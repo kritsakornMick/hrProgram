@@ -54,9 +54,9 @@ export const MENU: MenuGroup[] = [
     icon: Database,
     tone: "orange",
     items: [
-      { title: "บริษัท/องค์กร", href: "/companies", icon: Building2, screen: "#1", owner: "Tech Lead", ready: false },
+      { title: "บริษัท/องค์กร", href: "/companies", icon: Building2, screen: "#1", owner: "Tech Lead", ready: true },
       { title: "หน่วยงานลูกค้า", href: "/customers", icon: Landmark, screen: "#2", owner: "น้อง A", ready: true },
-      { title: "พนักงาน HR", href: "/staff", icon: UsersRound, screen: "#3", owner: "น้อง A", ready: false },
+      { title: "พนักงานบริษัท", href: "/staff", icon: UsersRound, screen: "#3", owner: "น้อง A", ready: true },
     ],
   },
   {
@@ -68,8 +68,8 @@ export const MENU: MenuGroup[] = [
     items: [
       { title: "ใบสมัครงาน", href: "/applicants", icon: FileText, screen: "#4–#5", owner: "น้อง A", ready: true },
       { title: "ตรวจเอกสารสมัครงาน", href: "/document-checks", icon: FileCheck2, screen: "#6", owner: "น้อง A", ready: true },
-      { title: "สัมภาษณ์งาน", href: "/interviews", icon: Handshake, screen: "#7", owner: "น้อง A", ready: false },
-      { title: "มอบอำนาจและตรวจประวัติ", href: "/background-checks", icon: IdCard, screen: "#11", owner: "น้อง B", ready: false },
+      { title: "สัมภาษณ์งาน", href: "/interviews", icon: Handshake, screen: "#7", owner: "น้อง A", ready: true },
+      { title: "มอบอำนาจและตรวจประวัติ", href: "/background-checks", icon: IdCard, screen: "#11", owner: "น้อง B", ready: true },
       { title: "หนังสือส่งตัวเพื่อเข้าสัมภาษณ์", href: "/interview-referrals", icon: Send, screen: "#9", owner: "น้อง B", ready: false },
       { title: "หนังสือส่งตัวเพื่อเข้าปฏิบัติงาน", href: "/assignment-letters", icon: FileSignature, screen: "#10", owner: "น้อง B", ready: false },
       { title: "สัญญาค้ำประกันบุคคลเข้าทำงาน", href: "/guarantee-contracts", icon: ShieldCheck, screen: "#12", owner: "น้อง B", ready: false },

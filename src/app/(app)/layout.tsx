@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser()
 
   return (
-    <div className="[--header-height:4.5rem]">
+    <div className="[--header-height:4.25rem] sm:[--header-height:5rem] lg:[--header-height:6rem]">
       <SidebarProvider className="flex flex-col">
         <AppHeader user={user} />
         <div className="flex flex-1">
