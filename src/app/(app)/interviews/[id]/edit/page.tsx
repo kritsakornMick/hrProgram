@@ -19,7 +19,7 @@ export default async function EditInterviewPage({ params }: PageProps<"/intervie
   const user = await requirePageRole(["admin", "hr"])
   const { id } = await params
   const interviewId = Number(id)
-  if (!Number.isInteger(interviewId) || interviewId <= 0) notFound()
+  if (!Number.isInteger(interviewId) || interviewId <= 0 || interviewId > 2_147_483_647) notFound()
 
   const [interview, documentChecksRaw, companies, customers, staffList] = await Promise.all([
     db.interview.findUnique({

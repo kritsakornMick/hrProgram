@@ -92,7 +92,7 @@ export async function createInterview(input: InterviewInput): Promise<ActionResu
 
 export async function updateInterview(id: number, input: InterviewInput): Promise<ActionResult> {
   const user = await requireRole(CAN_MANAGE_INTERVIEW)
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) {
     return { ok: false, error: "รหัสข้อมูลการสัมภาษณ์ไม่ถูกต้อง" }
   }
 
@@ -116,10 +116,14 @@ export async function updateInterview(id: number, input: InterviewInput): Promis
     return { ok: false, error: fkError }
   }
 
-  await db.interview.update({
+  // updateMany ไม่ throw ถ้าข้อมูลถูกลบไประหว่างที่กำลังแก้ (update จะ error P2025 เป็นหน้า 500)
+  const updated = await db.interview.updateMany({
     where: { id },
     data: payload,
   })
+  if (updated.count === 0) {
+    return { ok: false, error: "ไม่พบข้อมูลการสัมภาษณ์ที่ต้องการแก้ไข อาจถูกลบไปแล้ว" }
+  }
 
   await audit(user, "update", "interview", id)
   revalidatePath("/interviews")
@@ -129,15 +133,28 @@ export async function updateInterview(id: number, input: InterviewInput): Promis
 
 export async function deleteInterview(id: number): Promise<ActionResult> {
   const user = await requireRole(CAN_MANAGE_INTERVIEW)
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!Number.isInteger(id) || id <= 0 || id > 2_147_483_647) {
     return { ok: false, error: "รหัสข้อมูลการสัมภาษณ์ไม่ถูกต้อง" }
   }
 
-  // ใช้ Transaction เพื่อเช็กข้อมูลปลายทางและลบในรอบเดียว ป้องกัน Race Condition ที่ทำให้เอกสารปลายทางหาย
-  const deleteResult = await db.$transaction(async (tx) => {
-    const target = await tx.interview.findUnique({
+  // ลบด้วยคำสั่งเดียวที่มีเงื่อนไข "ไม่มีเอกสารปลายทาง" อยู่ใน WHERE
+  // (นับก่อนแล้วค่อยลบ แม้อยู่ใน transaction ก็ยังมีช่องให้สัญญาที่บันทึกแทรกเข้ามาถูก cascade ลบไปด้วย)
+  const deleted = await db.interview.deleteMany({
+    where: {
+      id,
+      employmentContracts: { none: {} },
+      backgroundChecks: { none: {} },
+      interviewReferrals: { none: {} },
+      assignmentLetters: { none: {} },
+      guaranteeContracts: { none: {} },
+    },
+  })
+
+  if (deleted.count === 0) {
+    // ลบไม่ได้: หาสาเหตุเพื่อแจ้งผู้ใช้ (ไม่มีข้อมูลแล้ว หรือมีเอกสารปลายทางเชื่อมอยู่)
+    const target = await db.interview.findUnique({
       where: { id },
-      include: {
+      select: {
         _count: {
           select: {
             employmentContracts: true,
@@ -149,31 +166,11 @@ export async function deleteInterview(id: number): Promise<ActionResult> {
         },
       },
     })
-
     if (!target) {
-      return { ok: false as const, error: "ไม่พบข้อมูลการสัมภาษณ์ที่ต้องการลบ" }
+      return { ok: false, error: "ไม่พบข้อมูลการสัมภาษณ์ที่ต้องการลบ อาจถูกลบไปแล้ว" }
     }
-
-    const totalRefs =
-      target._count.employmentContracts +
-      target._count.backgroundChecks +
-      target._count.interviewReferrals +
-      target._count.assignmentLetters +
-      target._count.guaranteeContracts
-
-    if (totalRefs > 0) {
-      return {
-        ok: false as const,
-        error: `ลบไม่ได้ เพราะมีเอกสารหรือสัญญาปลายทางเชื่อมอยู่ ${totalRefs} รายการ`,
-      }
-    }
-
-    await tx.interview.delete({ where: { id } })
-    return { ok: true as const }
-  })
-
-  if (!deleteResult.ok) {
-    return deleteResult
+    const totalRefs = Object.values(target._count).reduce((sum, n) => sum + n, 0)
+    return { ok: false, error: `ลบไม่ได้ เพราะมีเอกสารหรือสัญญาปลายทางเชื่อมอยู่ ${totalRefs} รายการ` }
   }
 
   await audit(user, "delete", "interview", id)

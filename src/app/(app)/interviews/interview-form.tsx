@@ -168,7 +168,7 @@ export function InterviewForm({
                     <option value="">-- เลือกผู้สมัครงานที่ตรวจเอกสารแล้ว --</option>
                     {documentChecks.map((doc) => (
                       <option key={doc.id} value={String(doc.id)}>
-                        DOC{String(doc.id).padStart(3, "0")} - {doc.applicantName} ({doc.appliedPosition || "ไม่ระบุตำแหน่ง"})
+                        DC-{String(doc.id).padStart(4, "0")} - {doc.applicantName} ({doc.appliedPosition || "ไม่ระบุตำแหน่ง"})
                       </option>
                     ))}
                   </select>
