@@ -1,0 +1,56 @@
+"use client"
+
+import { Trash2 } from "lucide-react"
+import { useState, useTransition } from "react"
+import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { deleteDocumentCheck } from "./actions"
+
+export function DeleteDocumentCheckButton({ id, applicantName }: { id: number; applicantName: string }) {
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+
+  function onConfirm() {
+    startTransition(async () => {
+      const result = await deleteDocumentCheck(id)
+      setOpen(false)
+      if (result.ok) toast.success(result.message)
+      else toast.error(result.error)
+    })
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger
+        render={<Button variant="ghost" size="icon-sm" aria-label={`ลบแบบตรวจเอกสารเลขที่ ${id}`} />}
+      >
+        <Trash2 className="text-destructive" />
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>ลบแบบตรวจเอกสาร</AlertDialogTitle>
+          <AlertDialogDescription>
+            ต้องการลบแบบตรวจเอกสารเลขที่ {id} ของ “{applicantName}” ใช่ไหม ลบแล้วกู้คืนไม่ได้
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={onConfirm} disabled={pending}>
+            ลบ
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
