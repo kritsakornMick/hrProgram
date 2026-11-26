@@ -70,7 +70,7 @@ export const MENU: MenuGroup[] = [
       { title: "ตรวจเอกสารสมัครงาน", href: "/document-checks", icon: FileCheck2, screen: "#6", owner: "น้อง A", ready: true },
       { title: "สัมภาษณ์งาน", href: "/interviews", icon: Handshake, screen: "#7", owner: "น้อง A", ready: true },
       { title: "มอบอำนาจและตรวจประวัติ", href: "/background-checks", icon: IdCard, screen: "#11", owner: "น้อง B", ready: true },
-      { title: "หนังสือส่งตัวเพื่อเข้าสัมภาษณ์", href: "/interview-referrals", icon: Send, screen: "#9", owner: "น้อง B", ready: false },
+      { title: "หนังสือส่งตัวเพื่อเข้าสัมภาษณ์", href: "/interview-referrals", icon: Send, screen: "#9", owner: "น้อง B", ready: true },
       { title: "หนังสือส่งตัวเพื่อเข้าปฏิบัติงาน", href: "/assignment-letters", icon: FileSignature, screen: "#10", owner: "น้อง B", ready: false },
       { title: "สัญญาค้ำประกันบุคคลเข้าทำงาน", href: "/guarantee-contracts", icon: ShieldCheck, screen: "#12", owner: "น้อง B", ready: false },
     ],
