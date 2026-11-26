@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { Briefcase, ClipboardCheck, FileCheck2, Save, UserCheck, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useTransition } from "react"
+import { useEffect, useRef, useTransition } from "react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -82,6 +82,12 @@ export function InterviewForm({
   const probationStart = useWatch({ control: form.control, name: "probationStartDate" })
   const probationDays = useWatch({ control: form.control, name: "probationDays" })
 
+  // เก็บค่าก่อนหน้าของวันเริ่มทดลองงานและจำนวนวัน เพื่อไม่ให้คำนวณทับค่าเดิมตอนเปิดหน้าแก้ไข
+  const prevProbationRef = useRef({
+    start: defaultValues.probationStartDate,
+    days: defaultValues.probationDays,
+  })
+
   const selectedDoc = documentChecks.find((d) => String(d.id) === selectedDocId)
   const selectedStaff = staffList.find((s) => String(s.id) === selectedStaffId)
 
@@ -96,15 +102,20 @@ export function InterviewForm({
     }
   }, [interviewId, selectedDoc, form])
 
-  // คำนวณวันที่จบทดลองงานอัตโนมัติจากวันที่เริ่มทดลองงาน + จำนวนวันทดลองงาน
+  // คำนวณวันที่จบทดลองงานอัตโนมัติ เฉพาะตอนที่ผู้ใช้แก้ไขวันเริ่มหรือจำนวนวันทดลองงานเท่านั้น
   useEffect(() => {
+    const prev = prevProbationRef.current
+    if (prev.start === probationStart && prev.days === probationDays) return
+    prevProbationRef.current = { start: probationStart, days: probationDays }
+
     if (!probationStart || !probationDays) return
-    const days = Number(probationDays)
+    const days = Number.parseInt(probationDays, 10)
     if (!Number.isFinite(days) || days <= 0) return
-    const start = new Date(probationStart)
-    if (Number.isNaN(start.getTime())) return
-    start.setDate(start.getDate() + days)
-    form.setValue("probationEndDate", start.toISOString().slice(0, 10))
+    const [y, m, d] = probationStart.split("-").map(Number)
+    if (!y || !m || !d) return
+    const end = new Date(Date.UTC(y, m - 1, d + days))
+    if (Number.isNaN(end.getTime())) return
+    form.setValue("probationEndDate", end.toISOString().slice(0, 10))
   }, [probationStart, probationDays, form])
 
   function onSubmit(values: InterviewInput) {

@@ -2,6 +2,7 @@ import { Handshake } from "lucide-react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
+import { auditView } from "@/lib/audit"
 import { formatThaiDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
@@ -15,10 +16,10 @@ function formatDateInput(date: Date | null) {
 }
 
 export default async function EditInterviewPage({ params }: PageProps<"/interviews/[id]/edit">) {
-  await requirePageRole(["admin", "hr"])
+  const user = await requirePageRole(["admin", "hr"])
   const { id } = await params
   const interviewId = Number(id)
-  if (!Number.isFinite(interviewId)) notFound()
+  if (!Number.isInteger(interviewId) || interviewId <= 0) notFound()
 
   const [interview, documentChecksRaw, companies, customers, staffList] = await Promise.all([
     db.interview.findUnique({
@@ -60,6 +61,9 @@ export default async function EditInterviewPage({ params }: PageProps<"/intervie
   ])
 
   if (!interview) notFound()
+
+  // หน้าแก้ไขแสดงเลขบัญชีธนาคาร ต้องบันทึกประวัติการเข้าถึงข้อมูลส่วนบุคคล (PDPA)
+  await auditView(user, "interview", interview.id)
 
   const documentChecks = documentChecksRaw.map((doc) => ({
     id: doc.id,
