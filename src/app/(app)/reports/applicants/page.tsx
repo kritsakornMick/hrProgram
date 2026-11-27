@@ -154,9 +154,9 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
             {filters.errors.length === 0 && (
               // ใช้ <a> ธรรมดา ไม่ใช่ <Link>: Link จะ prefetch ตอนปุ่มโผล่บนจอ ทำให้ route สร้างไฟล์
               // และบันทึก audit "export" ทั้งที่ผู้ใช้ยังไม่ได้กด
-              <a href={exportHref} download="applicants-report.xlsx" className={buttonVariants({ size: "lg" })}>
+              <a href={exportHref} download className={buttonVariants({ size: "lg" })}>
                 <Download />
-                ส่งออก Excel
+                ส่งออก Excel (CSV)
               </a>
             )}
           </div>

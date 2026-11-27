@@ -1,15 +1,34 @@
-import ExcelJS from "exceljs"
 import { audit } from "@/lib/audit"
+import { type CsvColumn, toCsv } from "@/lib/csv"
+import { toDateInput } from "@/lib/dates"
 import { requirePageRole } from "@/lib/session"
 import {
+  type ApplicantReportValues,
   buildApplicantReportWhere,
   getApplicantReportRows,
   parseApplicantReportFilters,
   toApplicantReportValues,
 } from "../data"
 
-export const runtime = "nodejs"
+const COLUMNS: CsvColumn<ApplicantReportValues>[] = [
+  { header: "ตำแหน่งงาน", value: (r) => r.position },
+  { header: "เลขบัตรประชาชน", value: (r) => r.nationalId, keepAsText: true },
+  { header: "คำนำหน้า-ชื่อ-สกุล (ไทย)", value: (r) => r.fullNameTh },
+  { header: "วันเกิด", value: (r) => r.birthDate },
+  { header: "วันที่เริ่มงาน", value: (r) => r.startDate },
+  { header: "โทรศัพท์มือถือ", value: (r) => r.mobilePhone, keepAsText: true },
+  { header: "ที่อยู่", value: (r) => r.address },
+  { header: "วุฒิการศึกษา", value: (r) => r.educationLevel },
+  { header: "ผู้ค้ำประกัน", value: (r) => r.guarantorName },
+  { header: "โทรศัพท์ผู้ค้ำประกัน", value: (r) => r.guarantorPhone, keepAsText: true },
+  { header: "บัญชีธนาคาร", value: (r) => r.bankName },
+  { header: "หมายเลขบัญชี", value: (r) => r.bankAccountNo, keepAsText: true },
+]
 
+/**
+ * ส่งออกรายงานผู้สมัครเป็น CSV (เปิดใน Excel ได้) ตามตัวกรองเดียวกับหน้ารายงาน ทุกแถวที่ตรงเงื่อนไข
+ * มีเลขบัตรและเลขบัญชีเต็ม จึงจำกัด admin/hr และบันทึก audit "export" ทุกครั้ง
+ */
 export async function GET(request: Request) {
   const user = await requirePageRole(["admin", "hr"])
   const url = new URL(request.url)
@@ -27,40 +46,20 @@ export async function GET(request: Request) {
   }
 
   const rows = await getApplicantReportRows(buildApplicantReportWhere(filters))
-  const workbook = new ExcelJS.Workbook()
-  const worksheet = workbook.addWorksheet("รายงานผู้สมัคร")
+  const csv = toCsv(COLUMNS, rows.map(toApplicantReportValues))
 
-  worksheet.columns = [
-    { header: "ตำแหน่งงาน", key: "position", width: 22 },
-    { header: "เลขบัตรประชาชน", key: "nationalId", width: 20, style: { numFmt: "@" } },
-    { header: "คำนำหน้า-ชื่อ-สกุล (ไทย)", key: "fullNameTh", width: 30 },
-    { header: "วันเกิด", key: "birthDate", width: 20 },
-    { header: "วันที่เริ่มงาน", key: "startDate", width: 20 },
-    { header: "โทรศัพท์มือถือ", key: "mobilePhone", width: 18 },
-    { header: "ที่อยู่", key: "address", width: 48 },
-    { header: "วุฒิการศึกษา", key: "educationLevel", width: 20 },
-    { header: "ผู้ค้ำประกัน", key: "guarantorName", width: 30 },
-    { header: "โทรศัพท์ผู้ค้ำประกัน", key: "guarantorPhone", width: 20 },
-    { header: "บัญชีธนาคาร", key: "bankName", width: 22 },
-    { header: "หมายเลขบัญชี", key: "bankAccountNo", width: 22, style: { numFmt: "@" } },
-  ]
-  worksheet.getRow(1).font = { bold: true }
-  worksheet.views = [{ state: "frozen", ySplit: 1 }]
-  worksheet.autoFilter = { from: "A1", to: "L1" }
-  worksheet.addRows(rows.map(toApplicantReportValues))
-
-  const file = new Uint8Array(await workbook.xlsx.writeBuffer())
   await audit(user, "export", "applicant_report", undefined, {
     from: filters.from || null,
     to: filters.to || null,
     rowCount: rows.length,
   })
 
-  return new Response(file, {
+  const filename = `applicants-report-${toDateInput(new Date())}.csv`
+  return new Response(csv, {
     headers: {
       "Cache-Control": "no-store, private",
-      "Content-Disposition": 'attachment; filename="applicants-report.xlsx"',
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type": "text/csv; charset=utf-8",
       "X-Content-Type-Options": "nosniff",
     },
   })
