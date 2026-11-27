@@ -3,7 +3,7 @@ export type GuaranteeContractParties = {
   applicantId: number
   applicant: {
     fullName: string
-    age: number | null
+    birthDate: string
     nationalId: string | null
     addressNo: string | null
     moo: string | null

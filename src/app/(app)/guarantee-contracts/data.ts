@@ -1,20 +1,26 @@
 import type { SelectOption } from "@/components/form/fields"
-import { formatThaiDate, parseDateInput } from "@/lib/dates"
+import type { GuaranteeContract } from "@/generated/prisma/client"
+import { formatThaiDate, parseDateInput, toDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { emptyToNull, toInt } from "@/lib/validators"
-import type { GuaranteeContractParsed } from "./schema"
+import { type GuaranteeContractInput, type GuaranteeContractParsed, parsePositiveInt } from "./schema"
 import type { GuaranteeContractParties } from "./types"
 
-const MAX_PG_INT = 2_147_483_647
-
-function calculateAge(birthDate: Date | null, refDate: Date): number | null {
-  if (!birthDate) return null
-  let age = refDate.getFullYear() - birthDate.getFullYear()
-  const monthDiff = refDate.getMonth() - birthDate.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && refDate.getDate() < birthDate.getDate())) {
-    age--
+export function toGuaranteeContractInput(record: GuaranteeContract): GuaranteeContractInput {
+  return {
+    interviewId: String(record.interviewId),
+    contractDate: toDateInput(record.contractDate) || toDateInput(new Date()),
+    guarantorName: record.guarantorName ?? "",
+    guarantorAge: record.guarantorAge !== null ? String(record.guarantorAge) : "",
+    guarantorNationalId: record.guarantorNationalId ?? "",
+    addressNo: record.addressNo ?? "",
+    moo: record.moo ?? "",
+    road: record.road ?? "",
+    subdistrict: record.subdistrict ?? "",
+    district: record.district ?? "",
+    province: record.province ?? "",
+    guarantorPhone: record.guarantorPhone ?? "",
   }
-  return age >= 0 ? age : null
 }
 
 export function toGuaranteeContractData(parsed: GuaranteeContractParsed) {
@@ -47,7 +53,7 @@ export function toGuaranteeContractData(parsed: GuaranteeContractParsed) {
 }
 
 export async function getGuaranteeContractParties(interviewId: number): Promise<GuaranteeContractParties | null> {
-  if (!Number.isInteger(interviewId) || interviewId <= 0 || interviewId > MAX_PG_INT) return null
+  if (!parsePositiveInt(interviewId)) return null
 
   const interview = await db.interview.findFirst({
     where: {
@@ -96,7 +102,7 @@ export async function getGuaranteeContractParties(interviewId: number): Promise<
     applicantId: app.id,
     applicant: {
       fullName: app.fullNameTh,
-      age: calculateAge(app.birthDate, new Date()),
+      birthDate: toDateInput(app.birthDate),
       nationalId: app.nationalId,
       addressNo: app.addressNo,
       moo: app.moo,

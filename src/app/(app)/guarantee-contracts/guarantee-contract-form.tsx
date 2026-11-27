@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Eye, FileSignature, Loader2, MapPin, PencilLine, Save, ShieldCheck, UserRound, X } from "lucide-react"
+import { Eye, FileSignature, Loader2, MapPin, PencilLine, Printer, Save, ShieldCheck, UserRound, X } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useTransition } from "react"
@@ -164,18 +164,12 @@ export function GuaranteeContractForm({ recordId, defaultValues, interviewOption
             </div>
           </FormSection>
 
-          <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
-            <Link
-              href="/guarantee-contracts"
-              className={buttonVariants({
-                variant: "outline",
-                className: "min-w-28 rounded-full border border-border bg-card text-foreground shadow-xs hover:bg-muted",
-              })}
-            >
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <Link href="/guarantee-contracts" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-10 px-4")}>
               <X />
               ยกเลิก
             </Link>
-            <Button type="submit" disabled={pending} className="min-w-28 rounded-full">
+            <Button type="submit" size="lg" disabled={pending} className="h-10 px-4">
               {pending ? <Loader2 className="animate-spin" /> : <Save />}
               {pending ? "กำลังบันทึก..." : "บันทึก"}
             </Button>
@@ -190,9 +184,30 @@ export function GuaranteeContractForm({ recordId, defaultValues, interviewOption
             view === "form" && "hidden xl:block",
           )}
         >
-          <div className="mb-3">
-            <p className="font-semibold">ตัวอย่างเอกสาร (A4)</p>
-            <p className="text-xs text-muted-foreground">ข้อความอัปเดตตามข้อมูลที่กรอกแบบเรียลไทม์</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-semibold">ตัวอย่างเอกสาร (A4)</p>
+              <p className="text-xs text-muted-foreground">
+                {recordId ? "บันทึกก่อนพิมพ์ เพื่อให้เอกสารตรงกับที่เก็บ" : "บันทึกก่อน จึงจะพิมพ์ได้"}
+              </p>
+            </div>
+            {recordId ? (
+              <Link
+                href={`/guarantee-contracts/${recordId}/print`}
+                // ห้าม prefetch: หน้าพิมพ์บันทึก audit "export" ตอนเปิด
+                prefetch={false}
+                target="_blank"
+                className={buttonVariants({ size: "sm" })}
+              >
+                <Printer />
+                พิมพ์
+              </Link>
+            ) : (
+              <Button type="button" size="sm" disabled>
+                <Printer />
+                พิมพ์
+              </Button>
+            )}
           </div>
           <A4Frame>
             <GuaranteeContractDocument no={recordId ?? null} values={values} parties={parties} />

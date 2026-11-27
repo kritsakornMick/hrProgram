@@ -17,7 +17,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { deleteGuaranteeContract } from "./actions"
 
-export function DeleteGuaranteeContractButton({ id, applicantName }: { id: number; applicantName: string }) {
+/** ปุ่มลบสัญญาค้ำประกัน (ยืนยันก่อนลบ) */
+export function DeleteGuaranteeContractButton({ id, label }: { id: number; label: string }) {
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
 
@@ -32,14 +33,14 @@ export function DeleteGuaranteeContractButton({ id, applicantName }: { id: numbe
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`ลบสัญญาค้ำประกันเลขที่ ${id}`} />}>
+      <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" aria-label={`ลบสัญญา ${label}`} />}>
         <Trash2 className="text-destructive" />
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>ลบสัญญาค้ำประกันบุคคลเข้าทำงาน</AlertDialogTitle>
+          <AlertDialogTitle>ลบสัญญาค้ำประกัน</AlertDialogTitle>
           <AlertDialogDescription>
-            ต้องการลบสัญญาค้ำประกันเลขที่ {id} ของ “{applicantName}” ใช่ไหม ลบแล้วกู้คืนไม่ได้
+            ต้องการลบสัญญาค้ำประกัน “{label}” ใช่ไหม ลบแล้วกู้คืนไม่ได้
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

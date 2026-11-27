@@ -5,22 +5,20 @@ import { notFound } from "next/navigation"
 import { PageHeader } from "@/components/page-header"
 import { buttonVariants } from "@/components/ui/button"
 import { auditView } from "@/lib/audit"
-import { toDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { requirePageRole } from "@/lib/session"
-import { getGuaranteeContractParties, getInterviewSelectOptions } from "../../data"
+import { getGuaranteeContractParties, getInterviewSelectOptions, toGuaranteeContractInput } from "../../data"
 import { GuaranteeContractForm } from "../../guarantee-contract-form"
 import { GUARANTEE_CONTRACT_EDITORS } from "../../permissions"
+import { parsePositiveInt } from "../../schema"
 
 export const metadata: Metadata = { title: "แก้ไขสัญญาค้ำประกันบุคคลเข้าทำงาน" }
-
-const MAX_PG_INT = 2_147_483_647
 
 export default async function EditGuaranteeContractPage({ params }: PageProps<"/guarantee-contracts/[id]/edit">) {
   const user = await requirePageRole(GUARANTEE_CONTRACT_EDITORS)
   const { id } = await params
-  const contractId = Number(id)
-  if (!Number.isInteger(contractId) || contractId <= 0 || contractId > MAX_PG_INT) notFound()
+  const contractId = parsePositiveInt(id)
+  if (!contractId) notFound()
 
   const record = await db.guaranteeContract.findUnique({ where: { id: contractId } })
   if (!record) notFound()
@@ -47,20 +45,7 @@ export default async function EditGuaranteeContractPage({ params }: PageProps<"/
       />
       <GuaranteeContractForm
         recordId={record.id}
-        defaultValues={{
-          interviewId: String(record.interviewId),
-          contractDate: toDateInput(record.contractDate) || toDateInput(new Date()),
-          guarantorName: record.guarantorName ?? "",
-          guarantorAge: record.guarantorAge !== null ? String(record.guarantorAge) : "",
-          guarantorNationalId: record.guarantorNationalId ?? "",
-          addressNo: record.addressNo ?? "",
-          moo: record.moo ?? "",
-          road: record.road ?? "",
-          subdistrict: record.subdistrict ?? "",
-          district: record.district ?? "",
-          province: record.province ?? "",
-          guarantorPhone: record.guarantorPhone ?? "",
-        }}
+        defaultValues={toGuaranteeContractInput(record)}
         interviewOptions={interviewOptions}
         initialParties={initialParties}
       />

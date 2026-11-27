@@ -1,4 +1,4 @@
-import { Pencil, Plus, Search, ShieldCheck } from "lucide-react"
+import { Pencil, Plus, Printer, Search, ShieldCheck } from "lucide-react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
@@ -11,36 +11,30 @@ import type { Prisma } from "@/generated/prisma/client"
 import { formatThaiDate } from "@/lib/dates"
 import { db } from "@/lib/db"
 import { maskNationalId } from "@/lib/pdpa"
-import { hasRole, toRole } from "@/lib/permissions"
+import { hasRole } from "@/lib/permissions"
 import { requireUser } from "@/lib/session"
-import { DeleteGuaranteeContractButton } from "./delete-guarantee-contract-button"
+import { DeleteGuaranteeContractButton } from "./delete-button"
 import { GUARANTEE_CONTRACT_EDITORS } from "./permissions"
+import { parsePositiveInt } from "./schema"
 
 export const metadata: Metadata = { title: "สัญญาค้ำประกันบุคคลเข้าทำงาน" }
 
 const PAGE_SIZE = 20
-const MAX_PG_INT = 2_147_483_647
 
 export default async function GuaranteeContractsPage({ searchParams }: PageProps<"/guarantee-contracts">) {
   const user = await requireUser()
-  const canEdit = hasRole(toRole(user.role), GUARANTEE_CONTRACT_EDITORS)
+  const canEdit = hasRole(user.role, GUARANTEE_CONTRACT_EDITORS)
   const { q, page: pageParam } = await searchParams
   const query = typeof q === "string" ? q.trim() : ""
-  const digits = query.replace(/[\s-]/g, "")
-  const parsedInt = /^\d+$/.test(query) ? Number(query) : null
-  const numericQuery = parsedInt !== null && parsedInt > 0 && parsedInt <= MAX_PG_INT ? parsedInt : null
+
+  const numericId = query ? parsePositiveInt(query.replace(/^GC-0*/i, "")) : null
 
   const where: Prisma.GuaranteeContractWhereInput | undefined = query
     ? {
         OR: [
-          ...(numericQuery ? [{ id: numericQuery }, { interviewId: numericQuery }] : []),
-          ...(/^\d+$/.test(digits)
-            ? [
-                { guarantorNationalId: { contains: digits } },
-                { interview: { documentCheck: { applicant: { nationalId: { contains: digits } } } } },
-              ]
-            : []),
+          ...(numericId ? [{ id: numericId }] : []),
           { guarantorName: { contains: query, mode: "insensitive" } },
+          { guarantorNationalId: { contains: query } },
           { guarantorPhone: { contains: query } },
           { interview: { documentCheck: { applicant: { fullNameTh: { contains: query, mode: "insensitive" } } } } },
           { interview: { customer: { name: { contains: query, mode: "insensitive" } } } },
@@ -65,12 +59,9 @@ export default async function GuaranteeContractsPage({ searchParams }: PageProps
       guarantorPhone: true,
       interview: {
         select: {
+          position: true,
           customer: { select: { name: true } },
-          documentCheck: {
-            select: {
-              applicant: { select: { fullNameTh: true, position: true } },
-            },
-          },
+          documentCheck: { select: { applicant: { select: { fullNameTh: true } } } },
         },
       },
     },
@@ -84,7 +75,7 @@ export default async function GuaranteeContractsPage({ searchParams }: PageProps
       <PageHeader
         icon={ShieldCheck}
         title="สัญญาค้ำประกันบุคคลเข้าทำงาน"
-        description="บันทึกและจัดการข้อมูลผู้ค้ำประกันบุคคลเข้าทำงาน"
+        description="จัดการข้อมูลสัญญาค้ำประกันและผู้ค้ำประกันบุคคลเข้าทำงาน"
         actions={
           canEdit && (
             <Link href="/guarantee-contracts/new" className={buttonVariants()}>
@@ -102,7 +93,7 @@ export default async function GuaranteeContractsPage({ searchParams }: PageProps
             <Input
               name="q"
               defaultValue={query}
-              placeholder="ค้นหาเลขที่สัญญา ชื่อผู้สมัคร ผู้ค้ำ หรือเลขบัตร"
+              placeholder="ค้นหาเลขที่สัญญา ผู้ถูกค้ำ ผู้ค้ำประกัน หรือเลขบัตร"
               className="pl-8"
               aria-label="ค้นหาสัญญาค้ำประกัน"
             />
@@ -111,63 +102,77 @@ export default async function GuaranteeContractsPage({ searchParams }: PageProps
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-28">เลขที่สัญญา</TableHead>
+                <TableHead className="w-24">เลขที่สัญญา</TableHead>
                 <TableHead className="hidden md:table-cell">วันที่ทำสัญญา</TableHead>
-                <TableHead className="min-w-36">ผู้ถูกค้ำประกัน (ผู้สมัคร)</TableHead>
+                <TableHead className="min-w-36">ผู้ถูกค้ำประกัน</TableHead>
                 <TableHead className="min-w-36">ผู้ค้ำประกัน</TableHead>
-                <TableHead className="hidden lg:table-cell">เบอร์โทรผู้ค้ำ</TableHead>
-                <TableHead className="hidden xl:table-cell">หน่วยงาน</TableHead>
-                {canEdit && <TableHead className="w-24" />}
+                <TableHead className="hidden lg:table-cell">หน่วยงาน / ตำแหน่ง</TableHead>
+                {canEdit && <TableHead className="w-8 sm:w-28" />}
               </TableRow>
             </TableHeader>
             <TableBody>
               {records.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={canEdit ? 7 : 6} className="py-10 text-center whitespace-normal text-muted-foreground">
-                    {query ? `ไม่พบสัญญาค้ำประกันที่ตรงกับ “${query}”` : "ยังไม่มีข้อมูลสัญญาค้ำประกันบุคคลเข้าทำงาน"}
+                  <TableCell colSpan={6} className="py-10 text-center whitespace-normal text-muted-foreground">
+                    {query ? `ไม่พบสัญญาค้ำประกันที่ตรงกับ “${query}”` : "ยังไม่มีสัญญาค้ำประกัน"}
                   </TableCell>
                 </TableRow>
               )}
               {records.map((r) => {
-                const applicant = r.interview.documentCheck.applicant
+                const applicantName = r.interview.documentCheck.applicant.fullNameTh
+                const guarantorName = r.guarantorName ?? "-"
                 const customer = r.interview.customer?.name
+                const position = r.interview.position
+                const contractNo = `GC-${String(r.id).padStart(4, "0")}`
                 return (
                   <TableRow key={r.id}>
-                    <TableCell className="font-medium">GC-{String(r.id).padStart(4, "0")}</TableCell>
+                    <TableCell className="font-medium">{contractNo}</TableCell>
                     <TableCell className="hidden md:table-cell">{formatThaiDate(r.contractDate)}</TableCell>
                     <TableCell className="whitespace-normal">
                       {canEdit ? (
                         <Link href={`/guarantee-contracts/${r.id}/edit`} className="font-medium hover:text-primary hover:underline">
-                          {applicant.fullNameTh}
+                          {applicantName}
                         </Link>
                       ) : (
-                        <span className="font-medium">{applicant.fullNameTh}</span>
+                        <span className="font-medium">{applicantName}</span>
                       )}
                       <div className="text-xs text-muted-foreground">
                         <span className="md:hidden">{formatThaiDate(r.contractDate)}</span>
-                        {applicant.position && <span>{r.contractDate ? ` · ${applicant.position}` : applicant.position}</span>}
-                        {customer && <span className="xl:hidden"> · {customer}</span>}
+                        {customer && <span className="lg:hidden"> · {customer}</span>}
                       </div>
                     </TableCell>
                     <TableCell className="whitespace-normal">
-                      <div className="font-medium">{r.guarantorName ?? "-"}</div>
-                      {r.guarantorNationalId && (
-                        <div className="font-mono text-xs text-muted-foreground">{maskNationalId(r.guarantorNationalId)}</div>
-                      )}
+                      <div className="font-medium">{guarantorName}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.guarantorNationalId ? maskNationalId(r.guarantorNationalId) : null}
+                        {r.guarantorPhone ? ` · ${r.guarantorPhone}` : null}
+                      </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">{r.guarantorPhone ?? "-"}</TableCell>
-                    <TableCell className="hidden whitespace-normal xl:table-cell">{customer ?? "-"}</TableCell>
+                    <TableCell className="hidden whitespace-normal lg:table-cell">
+                      <div>{customer ?? "-"}</div>
+                      {position && <div className="text-xs text-muted-foreground">{position}</div>}
+                    </TableCell>
                     {canEdit && (
                       <TableCell>
                         <div className="flex flex-col items-end gap-1 sm:flex-row sm:justify-end">
                           <Link
+                            href={`/guarantee-contracts/${r.id}/print`}
+                            // ห้าม prefetch: หน้าพิมพ์บันทึก audit "export" ตอนเปิด
+                            prefetch={false}
+                            target="_blank"
+                            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                            aria-label={`พิมพ์สัญญา ${contractNo}`}
+                          >
+                            <Printer />
+                          </Link>
+                          <Link
                             href={`/guarantee-contracts/${r.id}/edit`}
                             className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-                            aria-label={`แก้ไขสัญญาค้ำประกันเลขที่ ${r.id}`}
+                            aria-label={`แก้ไขสัญญา ${contractNo}`}
                           >
                             <Pencil />
                           </Link>
-                          <DeleteGuaranteeContractButton id={r.id} applicantName={applicant.fullNameTh} />
+                          <DeleteGuaranteeContractButton id={r.id} label={`${contractNo} (${guarantorName})`} />
                         </div>
                       </TableCell>
                     )}

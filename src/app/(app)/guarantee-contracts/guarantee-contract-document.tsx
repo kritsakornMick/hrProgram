@@ -1,5 +1,7 @@
+import dayjs from "dayjs"
 import { A4Sheet, Blank, DocTitle, Signature } from "@/components/document/a4-sheet"
 import { formatThaiDateFull } from "@/lib/dates"
+import { SITE } from "@/lib/site"
 import type { GuaranteeContractInput } from "./schema"
 import type { GuaranteeContractParties } from "./types"
 
@@ -8,6 +10,16 @@ const ID_PATTERN = /^(\d)(\d{4})(\d{5})(\d{2})(\d)$/
 /** 1234567890123 → 1-2345-67890-12-3 */
 function formatNationalId(value: string) {
   return value.replace(ID_PATTERN, "$1-$2-$3-$4-$5")
+}
+
+/** อายุเป็นปีเต็ม ณ วันที่ทำสัญญา (ยังไม่ระบุวันที่ = วันนี้) */
+function ageOn(birthDate: string, onDate: string) {
+  if (!birthDate) return ""
+  const birth = dayjs(birthDate)
+  const at = onDate ? dayjs(onDate) : dayjs()
+  if (!birth.isValid() || !at.isValid()) return ""
+  const years = at.diff(birth, "year")
+  return years >= 0 ? String(years) : ""
 }
 
 export function GuaranteeContractDocument({
@@ -21,11 +33,11 @@ export function GuaranteeContractDocument({
   parties: GuaranteeContractParties | null
   size?: "fit" | "actual"
 }) {
-  const companyName = parties?.company?.nameTh ?? "บริษัท สปีดี้แพคเก็จ เอ็กซ์เพรส จำกัด"
+  const companyName = parties?.company?.nameTh ?? SITE.companyName
   const guarantorId = values.guarantorNationalId ? formatNationalId(values.guarantorNationalId) : ""
   const app = parties?.applicant
   const applicantId = app?.nationalId ? formatNationalId(app.nationalId) : ""
-  const applicantAge = app?.age !== null && app?.age !== undefined ? String(app.age) : ""
+  const applicantAge = app ? ageOn(app.birthDate, values.contractDate) : ""
 
   return (
     <A4Sheet size={size}>

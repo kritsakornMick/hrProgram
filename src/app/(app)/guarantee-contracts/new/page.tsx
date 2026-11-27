@@ -5,23 +5,36 @@ import { PageHeader } from "@/components/page-header"
 import { buttonVariants } from "@/components/ui/button"
 import { toDateInput } from "@/lib/dates"
 import { requirePageRole } from "@/lib/session"
-import { getInterviewSelectOptions } from "../data"
+import { getGuaranteeContractParties, getInterviewSelectOptions } from "../data"
 import { GuaranteeContractForm } from "../guarantee-contract-form"
 import { GUARANTEE_CONTRACT_EDITORS } from "../permissions"
-import { createEmptyGuaranteeContract } from "../schema"
+import { createEmptyGuaranteeContract, parsePositiveInt } from "../schema"
 
 export const metadata: Metadata = { title: "ทำสัญญาค้ำประกันบุคคลเข้าทำงาน" }
 
-export default async function NewGuaranteeContractPage() {
+export default async function NewGuaranteeContractPage({
+  searchParams,
+}: PageProps<"/guarantee-contracts/new">) {
   await requirePageRole(GUARANTEE_CONTRACT_EDITORS)
-  const interviewOptions = await getInterviewSelectOptions()
+  const { interviewId: interviewIdParam } = await searchParams
+  const preselectedId = parsePositiveInt(interviewIdParam)
+
+  const [interviewOptions, initialParties] = await Promise.all([
+    getInterviewSelectOptions(preselectedId ?? undefined),
+    preselectedId ? getGuaranteeContractParties(preselectedId) : Promise.resolve(null),
+  ])
+
+  const defaultValues = {
+    ...createEmptyGuaranteeContract(toDateInput(new Date())),
+    interviewId: initialParties ? String(initialParties.interviewId) : "",
+  }
 
   return (
     <>
       <PageHeader
         icon={ShieldCheck}
         title="ทำสัญญาค้ำประกันบุคคลเข้าทำงาน"
-        description="บันทึกข้อมูลผู้ค้ำประกันบุคคลเข้าทำงาน"
+        description="บันทึกข้อมูลผู้ค้ำประกันและผู้ถูกค้ำประกัน"
         actions={
           <Link href="/guarantee-contracts" className={buttonVariants({ variant: "ghost" })}>
             <ArrowLeft />
@@ -30,9 +43,9 @@ export default async function NewGuaranteeContractPage() {
         }
       />
       <GuaranteeContractForm
-        defaultValues={createEmptyGuaranteeContract(toDateInput(new Date()))}
+        defaultValues={defaultValues}
         interviewOptions={interviewOptions}
-        initialParties={null}
+        initialParties={initialParties}
       />
     </>
   )
