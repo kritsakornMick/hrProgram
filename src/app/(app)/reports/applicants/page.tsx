@@ -1,6 +1,5 @@
 import { Download, Search, UsersRound } from "lucide-react"
 import type { Metadata } from "next"
-import Link from "next/link"
 import { PageHeader } from "@/components/page-header"
 import { Pagination } from "@/components/pagination"
 import { buttonVariants } from "@/components/ui/button"
@@ -9,6 +8,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { audit } from "@/lib/audit"
+import { maskNationalId } from "@/lib/pdpa"
 import { requirePageRole } from "@/lib/session"
 import {
   APPLICANT_REPORT_PAGE_SIZE,
@@ -36,6 +36,27 @@ const REPORT_COLUMNS = [
   { key: "bankName", label: "บัญชีธนาคาร" },
   { key: "bankAccountNo", label: "หมายเลขบัญชี" },
 ] as const satisfies readonly { key: keyof ApplicantReportValues; label: string }[]
+
+/** ซ่อนเลขบัญชีให้เหลือ 4 ตัวท้าย (เก็บขีดคั่นไว้) เช่น 123-4-56789-0 → XXX-X-XX789-0 */
+function maskBankAccount(value: string) {
+  const digitCount = value.replace(/\D/g, "").length
+  if (digitCount <= 4) return value
+  let toHide = digitCount - 4
+  return value.replace(/\d/g, (digit) => (toHide-- > 0 ? "X" : digit))
+}
+
+/**
+ * ค่าที่แสดงบนหน้าจอ: ซ่อนเลขบัตรและเลขบัญชีบางส่วน (PDPA)
+ * ตัวเต็มมีเฉพาะในไฟล์ Excel ที่ส่งออก (บันทึก audit "export" ทุกครั้ง)
+ */
+function toScreenValues(applicant: ApplicantReportRow): ApplicantReportValues {
+  const values = toApplicantReportValues(applicant)
+  return {
+    ...values,
+    nationalId: values.nationalId === "-" ? "-" : maskNationalId(values.nationalId),
+    bankAccountNo: values.bankAccountNo === "-" ? "-" : maskBankAccount(values.bankAccountNo),
+  }
+}
 
 export default async function ApplicantReportPage({ searchParams }: PageProps<"/reports/applicants">) {
   const user = await requirePageRole(["admin", "hr"])
@@ -131,14 +152,12 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
               </div>
             </div>
             {filters.errors.length === 0 && (
-              <Link
-                href={exportHref}
-                download="applicants-report.xlsx"
-                className={buttonVariants({ size: "lg" })}
-              >
+              // ใช้ <a> ธรรมดา ไม่ใช่ <Link>: Link จะ prefetch ตอนปุ่มโผล่บนจอ ทำให้ route สร้างไฟล์
+              // และบันทึก audit "export" ทั้งที่ผู้ใช้ยังไม่ได้กด
+              <a href={exportHref} download="applicants-report.xlsx" className={buttonVariants({ size: "lg" })}>
                 <Download />
                 ส่งออก Excel
-              </Link>
+              </a>
             )}
           </div>
 
@@ -150,7 +169,7 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
             <>
               <div className="space-y-3 2xl:hidden">
                 {applicants.map((applicant) => {
-                  const values = toApplicantReportValues(applicant)
+                  const values = toScreenValues(applicant)
                   return (
                     <article key={applicant.id} className="rounded-lg border p-3">
                       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -180,7 +199,7 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
                   </TableHeader>
                   <TableBody>
                     {applicants.map((applicant) => {
-                      const values = toApplicantReportValues(applicant)
+                      const values = toScreenValues(applicant)
                       return (
                         <TableRow key={applicant.id}>
                           {REPORT_COLUMNS.map((column) => (
