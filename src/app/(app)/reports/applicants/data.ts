@@ -3,6 +3,12 @@ import type { Prisma } from "@/generated/prisma/client"
 import { formatThaiDate, parseDateInput, toDateInput } from "@/lib/dates"
 import { db } from "@/lib/db"
 
+/*
+ * รายงานผู้สมัครทั้งหมด (#14) ตาม qry-rpt-ผู้สมัครงานทั้งหมด ใน Access
+ * คอลัมน์: รหัสผู้สมัคร, วันที่สมัคร, คำนำหน้า-ชื่อ-สกุล, ตำแหน่งงาน, เงินเดือนที่ต้องการ
+ * (เลขบัตร ที่อยู่ ผู้ค้ำ บัญชีธนาคาร อยู่ในรายงานผู้ประกันตน ไม่ใส่ที่นี่ ตามหลัก PDPA ใช้ข้อมูลเท่าที่จำเป็น)
+ */
+
 export const APPLICANT_REPORT_PAGE_SIZE = 20
 
 export type ApplicantReportSearchParams = {
@@ -24,42 +30,10 @@ export type ApplicantReportFilters = {
 
 const applicantReportSelect = {
   id: true,
-  position: true,
-  nationalId: true,
+  appliedAt: true,
   fullNameTh: true,
-  birthDate: true,
-  mobilePhone: true,
-  addressNo: true,
-  moo: true,
-  road: true,
-  subdistrict: true,
-  district: true,
-  province: true,
-  educationLevel: true,
-  documentChecks: {
-    where: { interviews: { some: {} } },
-    orderBy: { id: "desc" },
-    take: 1,
-    select: {
-      interviews: {
-        orderBy: { id: "desc" },
-        take: 1,
-        select: {
-          startDate: true,
-          bankName: true,
-          bankAccountNo: true,
-          guaranteeContracts: {
-            orderBy: { id: "desc" },
-            take: 1,
-            select: {
-              guarantorName: true,
-              guarantorPhone: true,
-            },
-          },
-        },
-      },
-    },
-  },
+  position: true,
+  expectedSalary: true,
 } satisfies Prisma.ApplicantSelect
 
 function getSingleValue(value: string | string[] | undefined) {
@@ -154,46 +128,26 @@ export async function countApplicantReportRows(where: Prisma.ApplicantWhereInput
 export type ApplicantReportRow = Awaited<ReturnType<typeof getApplicantReportRows>>[number]
 
 export type ApplicantReportValues = {
-  position: string
-  nationalId: string
+  code: string
+  appliedAt: string
   fullNameTh: string
-  birthDate: string
-  startDate: string
-  mobilePhone: string
-  address: string
-  educationLevel: string
-  guarantorName: string
-  guarantorPhone: string
-  bankName: string
-  bankAccountNo: string
+  position: string
+  expectedSalary: string
+}
+
+const SALARY_FORMAT = new Intl.NumberFormat("th-TH", { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+
+/** รหัสผู้สมัครแบบเดียวกับหน้าอื่น เช่น APP-0012 */
+export function applicantCode(id: number) {
+  return `APP-${String(id).padStart(4, "0")}`
 }
 
 export function toApplicantReportValues(applicant: ApplicantReportRow): ApplicantReportValues {
-  const interview = applicant.documentChecks[0]?.interviews[0]
-  const guarantor = interview?.guaranteeContracts[0]
-  const address = [
-    applicant.addressNo,
-    applicant.moo ? `หมู่ ${applicant.moo}` : null,
-    applicant.road ? `ถนน${applicant.road}` : null,
-    applicant.subdistrict ? `ต.${applicant.subdistrict}` : null,
-    applicant.district ? `อ.${applicant.district}` : null,
-    applicant.province ? `จ.${applicant.province}` : null,
-  ]
-    .filter((part): part is string => Boolean(part?.trim()))
-    .join(" ")
-
   return {
-    position: applicant.position ?? "-",
-    nationalId: applicant.nationalId ?? "-",
+    code: applicantCode(applicant.id),
+    appliedAt: formatThaiDate(applicant.appliedAt),
     fullNameTh: applicant.fullNameTh,
-    birthDate: formatThaiDate(applicant.birthDate),
-    startDate: formatThaiDate(interview?.startDate),
-    mobilePhone: applicant.mobilePhone ?? "-",
-    address: address || "-",
-    educationLevel: applicant.educationLevel ?? "-",
-    guarantorName: guarantor?.guarantorName ?? "-",
-    guarantorPhone: guarantor?.guarantorPhone ?? "-",
-    bankName: interview?.bankName ?? "-",
-    bankAccountNo: interview?.bankAccountNo ?? "-",
+    position: applicant.position ?? "-",
+    expectedSalary: applicant.expectedSalary ? SALARY_FORMAT.format(applicant.expectedSalary.toNumber()) : "-",
   }
 }

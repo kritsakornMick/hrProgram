@@ -10,24 +10,18 @@ import {
   toApplicantReportValues,
 } from "../data"
 
+/** คอลัมน์เดียวกับหน้าจอ (ตาม qry-rpt-ผู้สมัครงานทั้งหมด ใน Access) */
 const COLUMNS: CsvColumn<ApplicantReportValues>[] = [
-  { header: "ตำแหน่งงาน", value: (r) => r.position },
-  { header: "เลขบัตรประชาชน", value: (r) => r.nationalId, keepAsText: true },
+  { header: "รหัสผู้สมัคร", value: (r) => r.code },
+  { header: "วันที่สมัคร", value: (r) => r.appliedAt },
   { header: "คำนำหน้า-ชื่อ-สกุล (ไทย)", value: (r) => r.fullNameTh },
-  { header: "วันเกิด", value: (r) => r.birthDate },
-  { header: "วันที่เริ่มงาน", value: (r) => r.startDate },
-  { header: "โทรศัพท์มือถือ", value: (r) => r.mobilePhone, keepAsText: true },
-  { header: "ที่อยู่", value: (r) => r.address },
-  { header: "วุฒิการศึกษา", value: (r) => r.educationLevel },
-  { header: "ผู้ค้ำประกัน", value: (r) => r.guarantorName },
-  { header: "โทรศัพท์ผู้ค้ำประกัน", value: (r) => r.guarantorPhone, keepAsText: true },
-  { header: "บัญชีธนาคาร", value: (r) => r.bankName },
-  { header: "หมายเลขบัญชี", value: (r) => r.bankAccountNo, keepAsText: true },
+  { header: "ตำแหน่งงาน", value: (r) => r.position },
+  { header: "เงินเดือนที่ต้องการ (บาท)", value: (r) => r.expectedSalary },
 ]
 
 /**
  * ส่งออกรายงานผู้สมัครเป็น CSV (เปิดใน Excel ได้) ตามตัวกรองเดียวกับหน้ารายงาน ทุกแถวที่ตรงเงื่อนไข
- * มีเลขบัตรและเลขบัญชีเต็ม จึงจำกัด admin/hr และบันทึก audit "export" ทุกครั้ง
+ * มีชื่อผู้สมัคร (ข้อมูลส่วนบุคคล) จึงจำกัด admin/hr และบันทึก audit "export" ทุกครั้ง
  */
 export async function GET(request: Request) {
   const user = await requirePageRole(["admin", "hr"])

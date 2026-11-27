@@ -8,7 +8,6 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { audit } from "@/lib/audit"
-import { maskNationalId } from "@/lib/pdpa"
 import { requirePageRole } from "@/lib/session"
 import {
   APPLICANT_REPORT_PAGE_SIZE,
@@ -22,41 +21,14 @@ import type { ApplicantReportRow, ApplicantReportValues } from "./data"
 
 export const metadata: Metadata = { title: "รายงานผู้สมัครทั้งหมด" }
 
+/** คอลัมน์ตาม qry-rpt-ผู้สมัครงานทั้งหมด ใน Access (ใช้ทั้งการ์ดบนมือถือและตาราง) */
 const REPORT_COLUMNS = [
-  { key: "position", label: "ตำแหน่งงาน" },
-  { key: "nationalId", label: "เลขบัตรประชาชน" },
-  { key: "fullNameTh", label: "คำนำหน้า-ชื่อ-สกุล (ไทย)" },
-  { key: "birthDate", label: "วันเกิด" },
-  { key: "startDate", label: "วันที่เริ่มงาน" },
-  { key: "mobilePhone", label: "โทรศัพท์มือถือ" },
-  { key: "address", label: "ที่อยู่" },
-  { key: "educationLevel", label: "วุฒิการศึกษา" },
-  { key: "guarantorName", label: "ผู้ค้ำประกัน" },
-  { key: "guarantorPhone", label: "โทรศัพท์ผู้ค้ำประกัน" },
-  { key: "bankName", label: "บัญชีธนาคาร" },
-  { key: "bankAccountNo", label: "หมายเลขบัญชี" },
-] as const satisfies readonly { key: keyof ApplicantReportValues; label: string }[]
-
-/** ซ่อนเลขบัญชีให้เหลือ 4 ตัวท้าย (เก็บขีดคั่นไว้) เช่น 123-4-56789-0 → XXX-X-XX789-0 */
-function maskBankAccount(value: string) {
-  const digitCount = value.replace(/\D/g, "").length
-  if (digitCount <= 4) return value
-  let toHide = digitCount - 4
-  return value.replace(/\d/g, (digit) => (toHide-- > 0 ? "X" : digit))
-}
-
-/**
- * ค่าที่แสดงบนหน้าจอ: ซ่อนเลขบัตรและเลขบัญชีบางส่วน (PDPA)
- * ตัวเต็มมีเฉพาะในไฟล์ Excel ที่ส่งออก (บันทึก audit "export" ทุกครั้ง)
- */
-function toScreenValues(applicant: ApplicantReportRow): ApplicantReportValues {
-  const values = toApplicantReportValues(applicant)
-  return {
-    ...values,
-    nationalId: values.nationalId === "-" ? "-" : maskNationalId(values.nationalId),
-    bankAccountNo: values.bankAccountNo === "-" ? "-" : maskBankAccount(values.bankAccountNo),
-  }
-}
+  { key: "code", label: "รหัสผู้สมัคร", className: "w-28 whitespace-nowrap" },
+  { key: "appliedAt", label: "วันที่สมัคร", className: "w-32 whitespace-nowrap" },
+  { key: "fullNameTh", label: "คำนำหน้า-ชื่อ-สกุล (ไทย)", className: "whitespace-normal" },
+  { key: "position", label: "ตำแหน่งงาน", className: "whitespace-normal" },
+  { key: "expectedSalary", label: "เงินเดือนที่ต้องการ (บาท)", className: "w-40 text-right whitespace-nowrap" },
+] as const satisfies readonly { key: keyof ApplicantReportValues; label: string; className: string }[]
 
 export default async function ApplicantReportPage({ searchParams }: PageProps<"/reports/applicants">) {
   const user = await requirePageRole(["admin", "hr"])
@@ -107,7 +79,7 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
                 type="search"
                 maxLength={100}
                 defaultValue={filters.query}
-                placeholder="ชื่อ รหัสผู้สมัคร เลขบัตร หรือเบอร์โทร"
+                placeholder="ชื่อ ตำแหน่ง รหัส APP- เลขบัตร หรือเบอร์โทร"
               />
             </Field>
             <Field>
@@ -167,12 +139,12 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
             </div>
           ) : (
             <>
-              <div className="space-y-3 2xl:hidden">
+              <div className="space-y-3 md:hidden">
                 {applicants.map((applicant) => {
-                  const values = toScreenValues(applicant)
+                  const values = toApplicantReportValues(applicant)
                   return (
                     <article key={applicant.id} className="rounded-lg border p-3">
-                      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <dl className="grid grid-cols-2 gap-3">
                         {REPORT_COLUMNS.map((column) => (
                           <ReportField
                             key={column.key}
@@ -186,12 +158,12 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
                 })}
               </div>
 
-              <div className="hidden 2xl:block">
+              <div className="hidden md:block">
                 <Table className="table-fixed">
                   <TableHeader>
                     <TableRow>
                       {REPORT_COLUMNS.map((column) => (
-                        <TableHead key={column.key} className="whitespace-normal px-1 text-xs">
+                        <TableHead key={column.key} className={column.className}>
                           {column.label}
                         </TableHead>
                       ))}
@@ -199,14 +171,11 @@ export default async function ApplicantReportPage({ searchParams }: PageProps<"/
                   </TableHeader>
                   <TableBody>
                     {applicants.map((applicant) => {
-                      const values = toScreenValues(applicant)
+                      const values = toApplicantReportValues(applicant)
                       return (
                         <TableRow key={applicant.id}>
                           {REPORT_COLUMNS.map((column) => (
-                            <TableCell
-                              key={column.key}
-                              className="max-w-40 whitespace-normal break-words px-1 py-2 align-top text-xs"
-                            >
+                            <TableCell key={column.key} className={column.className}>
                               {values[column.key]}
                             </TableCell>
                           ))}
