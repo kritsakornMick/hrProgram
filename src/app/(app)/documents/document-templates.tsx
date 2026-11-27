@@ -1,7 +1,9 @@
 import { AuthorizationDocument } from "@/app/(app)/background-checks/authorization-document"
 import type { BackgroundCheckInput } from "@/app/(app)/background-checks/schema"
 import type { DocumentParties } from "@/app/(app)/background-checks/types"
-import { GuaranteeContractDocument, type GuaranteeContractDocumentData } from "@/app/(app)/guarantee-contracts/guarantee-contract-document"
+import { GuaranteeContractDocument } from "@/app/(app)/guarantee-contracts/guarantee-contract-document"
+import { createEmptyGuaranteeContract, type GuaranteeContractInput } from "@/app/(app)/guarantee-contracts/schema"
+import type { GuaranteeContractParties } from "@/app/(app)/guarantee-contracts/types"
 import { ReferralDocument } from "@/app/(app)/interview-referrals/referral-document"
 import type { ReferralInput } from "@/app/(app)/interview-referrals/schema"
 import type { ReferralParties } from "@/app/(app)/interview-referrals/types"
@@ -113,7 +115,11 @@ export type FullApplicantDocumentData = {
       addressedTo: string | null
       issuedByName: string | null
     } | null
-    guaranteeContract: GuaranteeContractDocumentData | null
+    guaranteeContractDoc: {
+      no: number | null
+      values: GuaranteeContractInput
+      parties: GuaranteeContractParties | null
+    } | null
   } | null
   defaultCompany: {
     nameTh: string
@@ -274,6 +280,30 @@ export function DocumentPreviewSheet({
           </div>
         )}
         {isPrint ? referralDocument : <A4Frame className={frameClassName}>{referralDocument}</A4Frame>}
+      </>
+    )
+  }
+
+  // 3. ใช้ Component สัญญาค้ำประกันจากหน้า /guarantee-contracts โดยตรง
+  if (docType === "สัญญาค้ำประกันบุคคลเข้าทำงาน") {
+    const gcDoc = interview?.guaranteeContractDoc
+    const guaranteeDocument = (
+      <GuaranteeContractDocument
+        no={gcDoc?.no ?? null}
+        values={gcDoc?.values ?? createEmptyGuaranteeContract("")}
+        parties={gcDoc?.parties ?? null}
+        size={sheetSize}
+      />
+    )
+
+    return (
+      <>
+        {!gcDoc?.no && !isPrint && (
+          <div className="mx-auto max-w-[210mm]">
+            <MissingRecordBanner message="ยังไม่มีบันทึกข้อมูลสัญญาค้ำประกันบุคคลเข้าทำงาน" isPrint={false} />
+          </div>
+        )}
+        {isPrint ? guaranteeDocument : <A4Frame className={frameClassName}>{guaranteeDocument}</A4Frame>}
       </>
     )
   }
@@ -630,23 +660,6 @@ export function DocumentPreviewSheet({
                   interview?.assignmentLetter?.issuedByName || interview?.interviewerName,
                   "........................................",
                 )}
-              />
-            </>
-          )}
-
-          {docType === "สัญญาค้ำประกันบุคคลเข้าทำงาน" && (
-            <>
-              {!interview?.guaranteeContract && (
-                <MissingRecordBanner message="ยังไม่มีบันทึกข้อมูลสัญญาค้ำประกันบุคคลเข้าทำงาน" isPrint={isPrint} />
-              )}
-              <GuaranteeContractDocument
-                contract={interview?.guaranteeContract ?? null}
-                companyName={companyName}
-                applicant={{
-                  fullNameTh: applicant.fullNameTh,
-                  nationalId: applicant.nationalId,
-                  position: interview?.position || applicant.position,
-                }}
               />
             </>
           )}

@@ -1,5 +1,7 @@
 import "server-only"
 import { getDocumentParties, toBackgroundCheckInput } from "@/app/(app)/background-checks/data"
+import { getGuaranteeContractParties, toGuaranteeContractInput } from "@/app/(app)/guarantee-contracts/data"
+import { createEmptyGuaranteeContract } from "@/app/(app)/guarantee-contracts/schema"
 import { getReferralParties, toReferralInput } from "@/app/(app)/interview-referrals/data"
 import { db } from "@/lib/db"
 import { DOCUMENT_TYPES } from "@/lib/menu"
@@ -194,13 +196,18 @@ export async function getApplicantDocumentData(applicantId: number): Promise<Ful
   const docCheck = applicant.documentChecks[0] ?? null
   const interview = docCheck?.interviews[0] ?? null
 
-  // ดึง parties จาก helper ของหน้า background-checks และ interview-referrals โดยตรง
-  const [bgParties, refParties] = interview
-    ? await Promise.all([getDocumentParties(interview.id), getReferralParties(interview.id)])
-    : [null, null]
+  // ดึง parties จาก helper ของหน้า background-checks, interview-referrals และ guarantee-contracts โดยตรง
+  const [bgParties, refParties, gcParties] = interview
+    ? await Promise.all([
+        getDocumentParties(interview.id),
+        getReferralParties(interview.id),
+        getGuaranteeContractParties(interview.id),
+      ])
+    : [null, null, null]
 
   const bgRow = interview?.backgroundChecks[0] ?? null
   const refRow = interview?.interviewReferrals[0] ?? null
+  const gcRow = interview?.guaranteeContracts[0] ?? null
 
   return {
     id: applicant.id,
@@ -349,7 +356,11 @@ export async function getApplicantDocumentData(applicantId: number): Promise<Ful
                 issuedByName: interview.assignmentLetters[0].issuedBy?.name ?? null,
               }
             : null,
-          guaranteeContract: interview.guaranteeContracts[0] ?? null,
+          guaranteeContractDoc: gcRow
+            ? { no: gcRow.id, values: toGuaranteeContractInput(gcRow), parties: gcParties }
+            : gcParties
+              ? { no: null, values: { ...createEmptyGuaranteeContract(""), interviewId: String(interview.id) }, parties: gcParties }
+              : null,
         }
       : null,
     defaultCompany,

@@ -10,15 +10,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="[--header-height:4.25rem] sm:[--header-height:5rem] lg:[--header-height:6rem]">
       <SidebarProvider className="flex flex-col">
-        <div className="print:hidden">
-          <AppHeader user={user} />
-        </div>
+        <AppHeader user={user} />
         <div className="flex flex-1">
-          <div className="print:hidden">
-            <AppSidebar />
-          </div>
-          <SidebarInset className="bg-background print:bg-transparent">
-            <div className="mx-auto w-full max-w-7xl p-4 sm:p-6 print:max-w-none print:p-0">{children}</div>
+          <AppSidebar />
+          <SidebarInset className="bg-background">
+            <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">{children}</div>
           </SidebarInset>
         </div>
       </SidebarProvider>
