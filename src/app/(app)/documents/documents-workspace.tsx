@@ -2,67 +2,116 @@
 
 import { FileText, Printer, Search, UserCheck } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { useForm, useWatch } from "react-hook-form"
+import { SelectField, type SelectOption } from "@/components/form/fields"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { DOCUMENT_TYPES } from "@/lib/menu"
+import type { ApplicantSelectorOption } from "./data"
 import {
   DocumentPreviewSheet,
   type DocumentTypeName,
   type FullApplicantDocumentData,
 } from "./document-templates"
 
-export type ApplicantSelectorOption = {
-  id: number
-  fullNameTh: string
-  position: string | null
-  appliedAtIso: string
-  interviewedAtIso: string | null
-  hasInterview: boolean
-}
-
 type Props = {
   applicants: ApplicantSelectorOption[]
   selectedApplicant: FullApplicantDocumentData | null
   initialDocType: DocumentTypeName
+  initialQuery: string
+  initialAppliedDate: string
+  initialInterviewDate: string
 }
 
-const selectClassName =
-  "h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+type SelectorFormValues = {
+  applicantId: string
+}
 
-export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocType }: Props) {
+export function DocumentsWorkspace({
+  applicants,
+  selectedApplicant,
+  initialDocType,
+  initialQuery,
+  initialAppliedDate,
+  initialInterviewDate,
+}: Props) {
   const router = useRouter()
   const [selectedDocType, setSelectedDocType] = useState<DocumentTypeName>(initialDocType)
-  const [searchKeyword, setSearchKeyword] = useState("")
-  const [appliedDateFilter, setAppliedDateFilter] = useState("")
-  const [interviewDateFilter, setInterviewDateFilter] = useState("")
+  const [searchKeyword, setSearchKeyword] = useState(initialQuery)
+  const [appliedDateFilter, setAppliedDateFilter] = useState(initialAppliedDate)
+  const [interviewDateFilter, setInterviewDateFilter] = useState(initialInterviewDate)
 
-  const filteredApplicants = useMemo(() => {
-    const kw = searchKeyword.trim().toLowerCase()
-    return applicants.filter((app) => {
-      if (appliedDateFilter && app.appliedAtIso !== appliedDateFilter) return false
-      if (interviewDateFilter && app.interviewedAtIso !== interviewDateFilter) return false
-      if (!kw) return true
-      const code = `app-${String(app.id).padStart(4, "0")}`
-      return (
-        app.fullNameTh.toLowerCase().includes(kw) ||
-        code.includes(kw) ||
-        (app.position ?? "").toLowerCase().includes(kw)
-      )
+  const form = useForm<SelectorFormValues>({
+    defaultValues: {
+      applicantId: selectedApplicant ? String(selectedApplicant.id) : "",
+    },
+  })
+
+  useEffect(() => {
+    form.reset({
+      applicantId: selectedApplicant ? String(selectedApplicant.id) : "",
     })
-  }, [applicants, searchKeyword, appliedDateFilter, interviewDateFilter])
+  }, [selectedApplicant, form])
 
-  function handleSelectApplicant(nextId: string) {
-    if (!nextId) {
-      router.push("/documents")
-      return
-    }
+  const watchedApplicantId = useWatch({ control: form.control, name: "applicantId" })
+
+  useEffect(() => {
+    const currentId = selectedApplicant ? String(selectedApplicant.id) : ""
+    if (watchedApplicantId === currentId) return
+
     const params = new URLSearchParams()
-    params.set("applicantId", nextId)
-    params.set("doc", selectedDocType)
-    router.push(`/documents?${params.toString()}`)
-  }
+    if (watchedApplicantId) {
+      params.set("applicantId", watchedApplicantId)
+      params.set("doc", selectedDocType)
+    }
+    if (searchKeyword.trim()) params.set("q", searchKeyword.trim())
+    if (appliedDateFilter) params.set("appliedDate", appliedDateFilter)
+    if (interviewDateFilter) params.set("interviewDate", interviewDateFilter)
+
+    const qs = params.toString()
+    router.push(qs ? `/documents?${qs}` : "/documents")
+  }, [watchedApplicantId, selectedApplicant, selectedDocType, searchKeyword, appliedDateFilter, interviewDateFilter, router])
+
+  // ค้นหาจากฝั่ง Server (จำกัดจำนวนผลลัพธ์ ไม่โหลดผู้สมัครทั้งหมดลง browser)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (
+        searchKeyword.trim() === initialQuery &&
+        appliedDateFilter === initialAppliedDate &&
+        interviewDateFilter === initialInterviewDate
+      ) {
+        return
+      }
+      const params = new URLSearchParams()
+      if (selectedApplicant) {
+        params.set("applicantId", String(selectedApplicant.id))
+        params.set("doc", selectedDocType)
+      }
+      if (searchKeyword.trim()) params.set("q", searchKeyword.trim())
+      if (appliedDateFilter) params.set("appliedDate", appliedDateFilter)
+      if (interviewDateFilter) params.set("interviewDate", interviewDateFilter)
+      const qs = params.toString()
+      router.replace(qs ? `/documents?${qs}` : "/documents", { scroll: false })
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [
+    searchKeyword,
+    appliedDateFilter,
+    interviewDateFilter,
+    initialQuery,
+    initialAppliedDate,
+    initialInterviewDate,
+    selectedApplicant,
+    selectedDocType,
+    router,
+  ])
+
+  const applicantOptions: SelectOption[] = applicants.map((app) => ({
+    value: String(app.id),
+    label: `APP-${String(app.id).padStart(4, "0")} - ${app.fullNameTh}${app.position ? ` (${app.position})` : ""}`,
+  }))
 
   function handleSelectDocType(doc: DocumentTypeName) {
     setSelectedDocType(doc)
@@ -70,41 +119,39 @@ export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocTy
       const params = new URLSearchParams()
       params.set("applicantId", String(selectedApplicant.id))
       params.set("doc", doc)
+      if (searchKeyword.trim()) params.set("q", searchKeyword.trim())
+      if (appliedDateFilter) params.set("appliedDate", appliedDateFilter)
+      if (interviewDateFilter) params.set("interviewDate", interviewDateFilter)
       router.replace(`/documents?${params.toString()}`, { scroll: false })
     }
   }
 
+  const printHref = selectedApplicant
+    ? `/documents/print?applicantId=${selectedApplicant.id}&doc=${encodeURIComponent(selectedDocType)}&auto=1`
+    : ""
+
   return (
     <div className="space-y-6">
-      {/* แถบควบคุมด้านบน (ซ่อนตอนสั่งพิมพ์) */}
-      <Card className="print:hidden">
+      <Card>
         <CardContent className="space-y-4 pt-6">
-          {/* แถวที่ 1: เลือกผู้สมัครงาน + ตัวกรองวันที่ + ปุ่มพิมพ์ */}
+          {/* แถวที่ 1: เลือกผู้สมัครงาน (SelectField) + ตัวกรอง + ปุ่มเปิดหน้าพิมพ์ */}
           <div className="grid gap-3 lg:grid-cols-12 lg:items-end">
-            <div className="space-y-1.5 lg:col-span-5">
-              <label htmlFor="applicantSelect" className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                <UserCheck className="size-3.5 text-primary" />
-                1. เลือกผู้สมัครงาน (เพื่อดูและพิมพ์เอกสาร)
-              </label>
-              <select
-                id="applicantSelect"
-                className={selectClassName}
-                value={selectedApplicant ? String(selectedApplicant.id) : ""}
-                onChange={(e) => handleSelectApplicant(e.target.value)}
-              >
-                <option value="">-- กรุณาเลือกผู้สมัครงาน ({filteredApplicants.length} รายการ) --</option>
-                {filteredApplicants.map((app) => (
-                  <option key={app.id} value={String(app.id)}>
-                    APP-{String(app.id).padStart(4, "0")} - {app.fullNameTh}
-                    {app.position ? ` (${app.position})` : ""}
-                  </option>
-                ))}
-              </select>
+            <div className="lg:col-span-5">
+              <SelectField
+                control={form.control}
+                name="applicantId"
+                label="1. เลือกผู้สมัครงาน (แสดงสูงสุด 50 รายการล่าสุด)"
+                options={applicantOptions}
+                placeholder={`-- กรุณาเลือกผู้สมัครงาน (${applicants.length} รายการ) --`}
+              />
             </div>
 
             <div className="space-y-1.5 sm:col-span-4 lg:col-span-2">
-              <label htmlFor="searchApplicant" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Search className="size-3.5" />
+              <label
+                htmlFor="searchApplicant"
+                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-foreground"
+              >
+                <Search className="size-3.5 text-muted-foreground" />
                 ค้นหาชื่อ / รหัส
               </label>
               <Input
@@ -116,7 +163,7 @@ export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocTy
             </div>
 
             <div className="space-y-1.5 sm:col-span-4 lg:col-span-2">
-              <label htmlFor="appliedDateFilter" className="block text-xs font-medium text-muted-foreground">
+              <label htmlFor="appliedDateFilter" className="block text-[0.8rem] font-semibold text-foreground">
                 วันที่สมัคร
               </label>
               <Input
@@ -128,7 +175,7 @@ export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocTy
             </div>
 
             <div className="space-y-1.5 sm:col-span-4 lg:col-span-2">
-              <label htmlFor="interviewDateFilter" className="block text-xs font-medium text-muted-foreground">
+              <label htmlFor="interviewDateFilter" className="block text-[0.8rem] font-semibold text-foreground">
                 วันที่สัมภาษณ์
               </label>
               <Input
@@ -140,15 +187,26 @@ export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocTy
             </div>
 
             <div className="lg:col-span-1">
-              <Button
-                type="button"
-                disabled={!selectedApplicant}
-                onClick={() => window.print()}
-                className="w-full bg-brand-orange text-primary-foreground hover:bg-brand-orange/90"
-              >
-                <Printer className="size-4" />
-                พิมพ์
-              </Button>
+              {selectedApplicant ? (
+                <a
+                  href={printHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${buttonVariants()} w-full bg-brand-orange text-primary-foreground hover:bg-brand-orange/90`}
+                >
+                  <Printer className="size-4" />
+                  พิมพ์
+                </a>
+              ) : (
+                <Button
+                  type="button"
+                  disabled
+                  className="w-full bg-brand-orange text-primary-foreground"
+                >
+                  <Printer className="size-4" />
+                  พิมพ์
+                </Button>
+              )}
             </div>
           </div>
 
@@ -183,9 +241,9 @@ export function DocumentsWorkspace({ applicants, selectedApplicant, initialDocTy
 
       {/* พื้นที่แสดงตัวอย่างเอกสาร (A4 Preview) */}
       {selectedApplicant ? (
-        <DocumentPreviewSheet applicant={selectedApplicant} docType={selectedDocType} />
+        <DocumentPreviewSheet applicant={selectedApplicant} docType={selectedDocType} mode="preview" />
       ) : (
-        <Card className="print:hidden">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <div className="rounded-full bg-tint-green p-4 text-primary">
               <UserCheck className="size-8" />
