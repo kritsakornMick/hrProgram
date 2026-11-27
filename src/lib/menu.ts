@@ -93,7 +93,7 @@ export const MENU: MenuGroup[] = [
     tone: "green",
     items: [
       { title: "รายงานผู้สมัครทั้งหมด", href: "/reports/applicants", icon: Users, screen: "#14", owner: "น้อง B", ready: true },
-      { title: "รายงานผู้ประกันตน", href: "/reports/insured", icon: UserRoundSearch, screen: "#14", owner: "น้อง B", ready: false },
+      { title: "รายงานผู้ประกันตน", href: "/reports/insured", icon: UserRoundSearch, screen: "#14", owner: "น้อง B", ready: true },
     ],
   },
   {
