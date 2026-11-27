@@ -13,7 +13,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <AppHeader user={user} />
         <div className="flex flex-1">
           <AppSidebar />
-          <SidebarInset className="bg-background">
+          {/* min-w-0: ไม่ให้เนื้อหากว้าง (เช่นตารางหลายคอลัมน์) ดันจนทั้งหน้าล้นแนวนอน ให้ตารางเลื่อนในกรอบของมันเอง */}
+          <SidebarInset className="min-w-0 bg-background">
             <div className="mx-auto w-full max-w-7xl p-4 sm:p-6">{children}</div>
           </SidebarInset>
         </div>

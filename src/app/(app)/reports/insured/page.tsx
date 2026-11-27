@@ -68,7 +68,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
   const isExportReady = canExport && !resolved.hasInvalidFilter && resolved.hasDateRange && total > 0
 
   return (
-    <div className="w-full max-w-[calc(100vw-2rem)] min-w-0 space-y-4 overflow-x-clip sm:max-w-[calc(100vw-3rem)] lg:max-w-[calc(100vw-19rem)]">
+    <div className="space-y-4">
       <PageHeader
         icon={UserRoundSearch}
         title="รายงานผู้ประกันตน"
@@ -107,8 +107,8 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
         </div>
       )}
 
-      <Card className="w-full max-w-full min-w-0 overflow-hidden">
-        <CardContent className="w-full max-w-full min-w-0 space-y-4">
+      <Card>
+        <CardContent className="space-y-4">
           <form method="get" className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-end">
             <div className="relative min-w-0">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -153,6 +153,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
                   <TableHead className="w-64">ที่อยู่</TableHead>
                   <TableHead className="w-40">วุฒิการศึกษา</TableHead>
                   <TableHead className="w-44">ผู้ค้ำประกัน</TableHead>
+                  <TableHead className="w-40">เลขบัตรผู้ค้ำ</TableHead>
                   <TableHead className="w-36">โทรศัพท์ผู้ค้ำ</TableHead>
                   <TableHead className="w-40">บัญชีธนาคาร</TableHead>
                   <TableHead className="w-40">หมายเลขบัญชี</TableHead>
@@ -161,7 +162,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
               <TableBody>
                 {records.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={12} className="py-10 text-center whitespace-normal text-muted-foreground">
+                    <TableCell colSpan={13} className="py-10 text-center whitespace-normal text-muted-foreground">
                       {resolved.hasInvalidFilter
                         ? "กรุณาแก้ไขช่วงวันที่ให้ถูกต้องเพื่อแสดงข้อมูล"
                         : !resolved.hasDateRange
@@ -187,6 +188,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
                       <TableCell className="whitespace-normal">{formatAddress(applicant)}</TableCell>
                       <TableCell className="whitespace-normal">{applicant.educationLevel ?? "-"}</TableCell>
                       <TableCell className="whitespace-normal">{guarantor?.guarantorName ?? "-"}</TableCell>
+                      <TableCell>{guarantor?.guarantorNationalId ? maskNationalId(guarantor.guarantorNationalId) : "-"}</TableCell>
                       <TableCell>{maskPhone(guarantor?.guarantorPhone)}</TableCell>
                       <TableCell className="whitespace-normal">{r.bankName ?? "-"}</TableCell>
                       <TableCell>{maskAccountNo(r.bankAccountNo)}</TableCell>

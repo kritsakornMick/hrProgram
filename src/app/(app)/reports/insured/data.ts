@@ -209,6 +209,7 @@ const insuredReportSelect = {
     take: 1,
     select: {
       guarantorName: true,
+      guarantorNationalId: true,
       guarantorPhone: true,
     },
   },

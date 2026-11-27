@@ -23,6 +23,7 @@ const COLUMNS: CsvColumn<InsuredReportRow>[] = [
   { header: "ที่อยู่", value: (r) => formatAddress(r.documentCheck.applicant) },
   { header: "วุฒิการศึกษา", value: (r) => r.documentCheck.applicant.educationLevel },
   { header: "ผู้ค้ำประกัน", value: (r) => r.guaranteeContracts[0]?.guarantorName },
+  { header: "เลขบัตรผู้ค้ำ", value: (r) => r.guaranteeContracts[0]?.guarantorNationalId, keepAsText: true },
   { header: "โทรศัพท์ผู้ค้ำ", value: (r) => r.guaranteeContracts[0]?.guarantorPhone, keepAsText: true },
   { header: "บัญชีธนาคาร", value: (r) => r.bankName },
   { header: "หมายเลขบัญชี", value: (r) => r.bankAccountNo, keepAsText: true },
