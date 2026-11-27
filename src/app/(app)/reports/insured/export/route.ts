@@ -1,28 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { audit } from "@/lib/audit"
-import { formatThaiDate, toDateInput } from "@/lib/dates"
+import { type CsvColumn, toCsv } from "@/lib/csv"
+import { formatThaiDate } from "@/lib/dates"
 import { hasRole } from "@/lib/permissions"
 import { requireUser } from "@/lib/session"
-import { formatAddress, INSURED_REPORT_ROLES, queryInsuredReportExport, resolveInsuredReportFilters } from "../data"
+import {
+  formatAddress,
+  INSURED_REPORT_ROLES,
+  type InsuredReportRow,
+  queryInsuredReportExport,
+  resolveInsuredReportFilters,
+} from "../data"
 
-const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/
+/** คอลัมน์ตาม qry-rpt-ผู้ประกันตน ใน Access (เลขบัตร/เบอร์/เลขบัญชีเก็บเป็นข้อความ ไม่ให้ Excel ตัดเลข 0) */
+const COLUMNS: CsvColumn<InsuredReportRow>[] = [
+  { header: "ตำแหน่งงาน", value: (r) => r.position ?? r.documentCheck.applicant.position },
+  { header: "เลขบัตรประชาชน", value: (r) => r.documentCheck.applicant.nationalId, keepAsText: true },
+  { header: "คำนำหน้า ชื่อ สกุล (ไทย)", value: (r) => r.documentCheck.applicant.fullNameTh },
+  { header: "วันเกิด", value: (r) => formatThaiDate(r.documentCheck.applicant.birthDate) },
+  { header: "วันที่เริ่มงาน", value: (r) => formatThaiDate(r.startDate) },
+  { header: "โทรศัพท์มือถือ", value: (r) => r.documentCheck.applicant.mobilePhone, keepAsText: true },
+  { header: "ที่อยู่", value: (r) => formatAddress(r.documentCheck.applicant) },
+  { header: "วุฒิการศึกษา", value: (r) => r.documentCheck.applicant.educationLevel },
+  { header: "ผู้ค้ำประกัน", value: (r) => r.guaranteeContracts[0]?.guarantorName },
+  { header: "โทรศัพท์ผู้ค้ำ", value: (r) => r.guaranteeContracts[0]?.guarantorPhone, keepAsText: true },
+  { header: "บัญชีธนาคาร", value: (r) => r.bankName },
+  { header: "หมายเลขบัญชี", value: (r) => r.bankAccountNo, keepAsText: true },
+]
 
-function sanitizeFormulaText(value: string): string {
-  const normalized = value.replaceAll("\r\n", " ").replaceAll("\n", " ")
-  return FORMULA_PREFIX_RE.test(normalized) ? `'${normalized}` : normalized
-}
-
-function csvCell(value: string | null | undefined): string {
-  const safeText = sanitizeFormulaText(value ?? "-")
-  return `"${safeText.replaceAll('"', '""')}"`
-}
-
-function csvTextCell(value: string | null | undefined): string {
-  if (!value) return csvCell("-")
-  const safeText = sanitizeFormulaText(value).replaceAll('"', '""')
-  return `"=""${safeText}"""`
-}
-
+/**
+ * ส่งออกรายงานผู้ประกันตนเป็น CSV (เปิดใน Excel ได้) ตามช่วงวันที่เริ่มงานที่เลือก
+ * มีเลขบัตรและเลขบัญชีเต็ม จึงจำกัด admin/hr และบันทึก audit "export" ทุกครั้ง
+ */
 export async function GET(request: NextRequest) {
   const user = await requireUser()
   if (!hasRole(user.role, INSURED_REPORT_ROLES)) {
@@ -52,56 +61,15 @@ export async function GET(request: NextRequest) {
     rowCount: rows.length,
   })
 
-  const headers = [
-    "ตำแหน่งงาน",
-    "เลขบัตรประชาชน",
-    "คำนำหน้า ชื่อ สกุล (ไทย)",
-    "วันเกิด",
-    "วันที่เริ่มงาน",
-    "โทรศัพท์มือถือ",
-    "ที่อยู่",
-    "วุฒิการศึกษา",
-    "ผู้ค้ำประกัน",
-    "โทรศัพท์ผู้ค้ำ",
-    "บัญชีธนาคาร",
-    "หมายเลขบัญชี",
-  ]
+  const filename = `insured-report-${resolved.startValue}_${resolved.stopValue}.csv`
 
-  const lines = [headers.map((h) => csvCell(h)).join(",")]
-
-  for (const r of rows) {
-    const applicant = r.documentCheck.applicant
-    const guarantor = r.guaranteeContracts[0]
-    const position = r.position ?? applicant.position ?? "-"
-
-    lines.push(
-      [
-        csvCell(position),
-        csvTextCell(applicant.nationalId),
-        csvCell(applicant.fullNameTh),
-        csvCell(formatThaiDate(applicant.birthDate)),
-        csvCell(formatThaiDate(r.startDate)),
-        csvTextCell(applicant.mobilePhone),
-        csvCell(formatAddress(applicant)),
-        csvCell(applicant.educationLevel),
-        csvCell(guarantor?.guarantorName),
-        csvTextCell(guarantor?.guarantorPhone),
-        csvCell(r.bankName),
-        csvTextCell(r.bankAccountNo),
-      ].join(","),
-    )
-  }
-
-  const csvContent = `\uFEFF${lines.join("\r\n")}`
-  const fileDatePart = `${resolved.startValue || "start"}_${resolved.stopValue || "stop"}`
-  const filename = `insured-report-${fileDatePart}.csv`
-
-  return new NextResponse(csvContent, {
+  return new NextResponse(toCsv(COLUMNS, rows), {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, private",
+      "X-Content-Type-Options": "nosniff",
     },
   })
 }

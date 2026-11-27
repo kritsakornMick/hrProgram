@@ -103,11 +103,11 @@ export function resolveInsuredReportFilters(input: InsuredReportFilterInput): Re
 
   if (!hasInvalidFilter && !hasDateRange) {
     if (startDate && !stopDate) {
-      warnings.push("กรุณาเลือกวันที่สิ้นสุด (Stop Date) ให้ครบช่วงวันที่")
+      warnings.push("กรุณาเลือกวันที่สิ้นสุดให้ครบช่วงวันที่")
     } else if (!startDate && stopDate) {
-      warnings.push("กรุณาเลือกวันที่เริ่มต้น (Start Date) ให้ครบช่วงวันที่")
+      warnings.push("กรุณาเลือกวันที่เริ่มต้นให้ครบช่วงวันที่")
     } else {
-      warnings.push("กรุณาเลือกช่วงวันที่เริ่มต้นและสิ้นสุด (Between Start Date and Stop Date) เพื่อแสดงหรือส่งออกข้อมูล")
+      warnings.push("กรุณาเลือกช่วงวันที่เริ่มต้นและสิ้นสุด เพื่อแสดงหรือส่งออกข้อมูล")
     }
   }
 

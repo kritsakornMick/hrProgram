@@ -78,7 +78,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
             isExportReady ? (
               <a href={exportHref} className={buttonVariants()}>
                 <FileSpreadsheet />
-                Export Excel
+                ส่งออก Excel (CSV)
               </a>
             ) : (
               <span
@@ -86,7 +86,7 @@ export default async function InsuredReportPage({ searchParams }: PageProps<"/re
                 className={buttonVariants({ className: "pointer-events-none opacity-50" })}
               >
                 <FileSpreadsheet />
-                Export Excel
+                ส่งออก Excel (CSV)
               </span>
             )
           ) : null
