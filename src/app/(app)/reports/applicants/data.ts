@@ -37,6 +37,7 @@ const applicantReportSelect = {
   province: true,
   educationLevel: true,
   documentChecks: {
+    where: { interviews: { some: {} } },
     orderBy: { id: "desc" },
     take: 1,
     select: {

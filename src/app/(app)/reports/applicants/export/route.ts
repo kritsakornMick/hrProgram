@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   if (filters.errors.length > 0) {
     return Response.json(
-      { error: filters.errors.join("、") },
+      { error: filters.errors.join(" / ") },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     )
   }
